@@ -16,25 +16,9 @@ function App() {
 
   return (
     <main className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-4">Welcome to Tauri + React</h1>
+      <h1 className="text-3xl font-bold text-center mb-4">Welcome</h1>
 
-      <form
-        className="flex justify-center mb-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-          className="border rounded p-2 mr-2"
-        />
-        <button type="submit" className="bg-blue-500 text-white p-2 rounded">
-          Greet
-        </button>
-      </form>
+  
       <Link to="/test" className="text-blue-500 hover:underline">
         Go to Test Page
       </Link>
