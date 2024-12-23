@@ -1,5 +1,3 @@
-//here we will make functions to write and read files
-
 use std::fs::{self, File};
 use std::path::Path;
 

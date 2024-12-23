@@ -17,18 +17,18 @@ function TestPage() {
     gyro_x: 0,
     gyro_y: 0,
     gyro_z: 0,
-    temp: 0,
-    press_alt: 0,
-    heading: 0,
-    ground_speed: 0,
+    imu_temp: 0,
+    bme_temp: 0,
+    bme_pressure: 0,
+    bme_altitude: 0,
+    bme_humidity: 0,
     gps_fix: 0,
-    gps_num_sats: 0,
-    gps_3d_fix: 0,
-    latitude: 0,
-    longitude: 0,
-    altitude: 0,
-    distance: 0,
-    packet_number: 0,
+    gps_fix_quality: 0,
+    gps_lat: 0,
+    gps_lon: 0,
+    gps_speed: 0,
+    gps_altitude: 0,
+    gps_satellites: 0,
     rssi: 0,
     snr: 0,
   });
@@ -172,40 +172,37 @@ function TestPage() {
           <div>Z: {telemetry.gyro_z.toFixed(2)}</div>
         </div>
         <div style={telemetryItem}>
-          <strong>Temperature (°C):</strong>
-          <div>{telemetry.temp.toFixed(1)}</div>
+          <strong>IMU Temperature (°C):</strong>
+          <div>{telemetry.imu_temp.toFixed(1)}</div>
         </div>
         <div style={telemetryItem}>
-          <strong>Pressure Altitude (m):</strong>
-          <div>{telemetry.press_alt.toFixed(1)}</div>
+          <strong>BME Temperature (°C):</strong>
+          <div>{telemetry.bme_temp.toFixed(1)}</div>
         </div>
         <div style={telemetryItem}>
-          <strong>Heading (deg):</strong>
-          <div>{telemetry.heading.toFixed(1)}</div>
+          <strong>BME Pressure (hPa):</strong>
+          <div>{telemetry.bme_pressure.toFixed(1)}</div>
         </div>
         <div style={telemetryItem}>
-          <strong>Ground Speed (m/s):</strong>
-          <div>{telemetry.ground_speed.toFixed(1)}</div>
+          <strong>BME Altitude (m):</strong>
+          <div>{telemetry.bme_altitude.toFixed(1)}</div>
+        </div>
+        <div style={telemetryItem}>
+          <strong>BME Humidity (%):</strong>
+          <div>{telemetry.bme_humidity.toFixed(1)}</div>
         </div>
         <div style={telemetryItem}>
           <strong>GPS:</strong>
           <div>Fix: {telemetry.gps_fix}</div>
-          <div>Satellites: {telemetry.gps_num_sats}</div>
-          <div>3D Fix: {telemetry.gps_3d_fix}</div>
+          <div>Fix Quality: {telemetry.gps_fix_quality}</div>
+          <div>Satellites: {telemetry.gps_satellites}</div>
         </div>
         <div style={telemetryItem}>
           <strong>Position:</strong>
-          <div>Lat: {telemetry.latitude.toFixed(4)}</div>
-          <div>Lon: {telemetry.longitude.toFixed(4)}</div>
-          <div>Alt: {telemetry.altitude.toFixed(1)}m</div>
-        </div>
-        <div style={telemetryItem}>
-          <strong>Distance (m):</strong>
-          <div>{telemetry.distance.toFixed(1)}</div>
-        </div>
-        <div style={telemetryItem}>
-          <strong>Packet:</strong>
-          <div>Number: {telemetry.packet_number}</div>
+          <div>Lat: {telemetry.gps_lat.toFixed(4)}</div>
+          <div>Lon: {telemetry.gps_lon.toFixed(4)}</div>
+          <div>Speed: {telemetry.gps_speed.toFixed(2)} m/s</div>
+          <div>Alt: {telemetry.gps_altitude.toFixed(1)} m</div>
         </div>
         <div style={telemetryItem}>
           <strong>Signal:</strong>

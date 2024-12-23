@@ -1,4 +1,4 @@
-//here we will parse the data and send to the front end.
+//DO NOT TOUCH THIS UNLESS YOU ABSOLUTELY UNDERSTAND WHAT YOU ARE DOING
 
 use std::io::Read;
 use std::thread;
@@ -12,9 +12,9 @@ use serde::Serialize;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::Emitter;  // Add this import
+use tauri::Emitter; 
 
-#[derive(Debug, Serialize, Clone)]  // Add Clone here
+#[derive(Debug, Serialize, Clone)] 
 pub struct TelemetryData {
     timestamp: String,
     accel_x: f32,
@@ -23,18 +23,18 @@ pub struct TelemetryData {
     gyro_x: f32,
     gyro_y: f32,
     gyro_z: f32,
-    temp: f32,
-    press_alt: f32,
-    heading: f32,
-    ground_speed: f32,
+    imu_temp: f32,        // was temp
+    bme_temp: f32,        // was press_alt
+    bme_pressure: f32,    // was heading
+    bme_altitude: f32,    // was ground_speed
+    bme_humidity: f32,    // was gps_num_sats
     gps_fix: u8,
-    gps_num_sats: u8,
-    gps_3d_fix: u8,
-    latitude: f32,
-    longitude: f32,
-    altitude: f32,
-    distance: f32,
-    packet_number: u8,
+    gps_fix_quality: u8,  // was gps_3d_fix
+    gps_lat: f32,         // was latitude
+    gps_lon: f32,         // was longitude
+    gps_speed: f32,       // was altitude
+    gps_altitude: f32,    // was distance
+    gps_satellites: u8,   // was packet_number
     rssi: i32,
     snr: f32,
 }
@@ -88,18 +88,18 @@ impl TelemetryBuffer {
             gyro_x: 0.0,
             gyro_y: 0.0,
             gyro_z: 0.0,
-            temp: 0.0,
-            press_alt: 0.0,
-            heading: 0.0,
-            ground_speed: 0.0,
+            imu_temp: 0.0,
+            bme_temp: 0.0,
+            bme_pressure: 0.0,
+            bme_altitude: 0.0,
+            bme_humidity: 0.0,
             gps_fix: 0,
-            gps_num_sats: 0,
-            gps_3d_fix: 0,
-            latitude: 0.0,
-            longitude: 0.0,
-            altitude: 0.0,
-            distance: 0.0,
-            packet_number: self.buffer.back()?.packet_number, // Use most recent packet number
+            gps_fix_quality: 0,
+            gps_lat: 0.0,
+            gps_lon: 0.0,
+            gps_speed: 0.0,
+            gps_altitude: 0.0,
+            gps_satellites: self.buffer.back()?.gps_satellites, // Use most recent packet number
             rssi: 0,
             snr: 0.0,
         };
@@ -112,14 +112,15 @@ impl TelemetryBuffer {
             avg.gyro_x += data.gyro_x;
             avg.gyro_y += data.gyro_y;
             avg.gyro_z += data.gyro_z;
-            avg.temp += data.temp;
-            avg.press_alt += data.press_alt;
-            avg.heading += data.heading;
-            avg.ground_speed += data.ground_speed;
-            avg.latitude += data.latitude;
-            avg.longitude += data.longitude;
-            avg.altitude += data.altitude;
-            avg.distance += data.distance;
+            avg.imu_temp += data.imu_temp;
+            avg.bme_temp += data.bme_temp;
+            avg.bme_pressure += data.bme_pressure;
+            avg.bme_altitude += data.bme_altitude;
+            avg.bme_humidity += data.bme_humidity;
+            avg.gps_lat += data.gps_lat;
+            avg.gps_lon += data.gps_lon;
+            avg.gps_speed += data.gps_speed;
+            avg.gps_altitude += data.gps_altitude;
             avg.rssi += data.rssi;
             avg.snr += data.snr;
         }
@@ -131,21 +132,22 @@ impl TelemetryBuffer {
         avg.gyro_x /= count;
         avg.gyro_y /= count;
         avg.gyro_z /= count;
-        avg.temp /= count;
-        avg.press_alt /= count;
-        avg.heading /= count;
-        avg.ground_speed /= count;
-        avg.latitude /= count;
-        avg.longitude /= count;
-        avg.altitude /= count;
-        avg.distance /= count;
+        avg.imu_temp /= count;
+        avg.bme_temp /= count;
+        avg.bme_pressure /= count;
+        avg.bme_altitude /= count;
+        avg.bme_humidity /= count;
+        avg.gps_lat /= count;
+        avg.gps_lon /= count;
+        avg.gps_speed /= count;
+        avg.gps_altitude /= count;
         avg.rssi = (avg.rssi as f32 / count) as i32;
         avg.snr /= count;
 
         // Use mode for discrete values
         avg.gps_fix = self.mode_u8(|d| d.gps_fix);
-        avg.gps_num_sats = self.mode_u8(|d| d.gps_num_sats);
-        avg.gps_3d_fix = self.mode_u8(|d| d.gps_3d_fix);
+        avg.gps_fix_quality = self.mode_u8(|d| d.gps_fix_quality);
+        avg.gps_satellites = self.mode_u8(|d| d.gps_satellites);
 
         Some(avg)
     }
@@ -228,18 +230,18 @@ fn parse_telemetry(message: &str, rssi: i32, snr: f32) -> Option<TelemetryData> 
         gyro_x: values[3].trim().parse().ok()?,
         gyro_y: values[4].trim().parse().ok()?,
         gyro_z: values[5].trim().parse().ok()?,
-        temp: values[6].trim().parse().ok()?,
-        press_alt: values[7].trim().parse().ok()?,
-        heading: values[8].trim().parse().ok()?,
-        ground_speed: values[9].trim().parse().ok()?,
-        gps_fix: values[10].trim().parse().ok()?,
-        gps_num_sats: values[11].trim().parse().ok()?,
-        gps_3d_fix: values[12].trim().parse().ok()?,
-        latitude: values[13].trim().parse().ok()?,
-        longitude: values[14].trim().parse().ok()?,
-        altitude: values[15].trim().parse().ok()?,
-        distance: values[16].trim().parse().ok()?,
-        packet_number: values[17].trim().parse().ok()?,
+        imu_temp: values[6].trim().parse().ok()?,
+        bme_temp: values[7].trim().parse().ok()?,
+        bme_pressure: values[8].trim().parse().ok()?,
+        bme_altitude: values[9].trim().parse().ok()?,
+        bme_humidity: values[10].trim().parse().ok()?,
+        gps_fix: values[11].trim().parse().ok()?,
+        gps_fix_quality: values[12].trim().parse().ok()?,
+        gps_lat: values[13].trim().parse().ok()?,
+        gps_lon: values[14].trim().parse().ok()?,
+        gps_speed: values[15].trim().parse().ok()?,
+        gps_altitude: values[16].trim().parse().ok()?,
+        gps_satellites: values[17].trim().parse().ok()?,
         rssi,
         snr,
     })
