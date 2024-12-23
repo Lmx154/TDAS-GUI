@@ -8,12 +8,10 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use crate::serial_operations::SerialConnection;
 use tauri::State;
-use chrono::NaiveDateTime;
 use serde::Serialize;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::Manager;
 use tauri::Emitter;  // Add this import
 
 #[derive(Debug, Serialize, Clone)]  // Add Clone here
@@ -187,68 +185,6 @@ pub fn debug_read_serial(mut port: Box<dyn SerialPort + Send>) {
                             if !line.is_empty() {
                                 // Simple formatting for each line
                                 println!("{}", line);
-                            }
-                            accumulated_data = accumulated_data[pos + 2..].to_string();
-                        }
-                    }
-                }
-                Err(e) => {
-                    if e.kind() == std::io::ErrorKind::TimedOut {
-                        thread::sleep(Duration::from_millis(100));
-                        continue;
-                    }
-                    println!("Critical error reading from port: {}", e);
-                    break;
-                }
-            }
-        }
-    });
-}
-
-pub fn data_parser(mut port: Box<dyn SerialPort + Send>) {
-    let buffer = Arc::new(Mutex::new(TelemetryBuffer::new(10, 10.0))); // 10 samples buffer, 10Hz output -- This is where we set buffer
-
-    thread::spawn(move || {
-        let mut serial_buf: Vec<u8> = vec![0; 1024];
-        let mut accumulated_data = String::new();
-        let mut current_message = String::new();
-        let mut current_rssi: Option<i32> = None;
-        let mut current_snr: Option<f32> = None;
-
-        loop {
-            match port.read(serial_buf.as_mut_slice()) {
-                Ok(t) => {
-                    if t > 0 {
-                        accumulated_data.push_str(&String::from_utf8_lossy(&serial_buf[..t]));
-
-                        while let Some(pos) = accumulated_data.find("\r\n") {
-                            let line = accumulated_data[..pos].trim();
-                            
-                            if line.starts_with("Message: ") {
-                                current_message = line["Message: ".len()..].to_string();
-                            } else if line.starts_with("RSSI: ") {
-                                if let Ok(rssi) = line["RSSI: ".len()..].trim().parse() {
-                                    current_rssi = Some(rssi);
-                                }
-                            } else if line.starts_with("Snr: ") {
-                                if let Ok(snr) = line["Snr: ".len()..].trim().parse() {
-                                    current_snr = Some(snr);
-                                }
-
-                                if let (Some(rssi), Some(snr)) = (current_rssi, current_snr) {
-                                    if let Some(telemetry) = parse_telemetry(&current_message, rssi, snr) {
-                                        // Add to buffer and get averaged data if available
-                                        if let Ok(mut buffer) = buffer.lock() {
-                                            if let Some(averaged_data) = buffer.add_data(telemetry) {
-                                                println!("Averaged telemetry: {:?}", averaged_data);
-                                                // Here you would send the averaged_data to the frontend
-                                            }
-                                        }
-                                    }
-                                    current_message.clear();
-                                    current_rssi = None;
-                                    current_snr = None;
-                                }
                             }
                             accumulated_data = accumulated_data[pos + 2..].to_string();
                         }

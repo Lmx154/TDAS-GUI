@@ -18,7 +18,7 @@ pub fn run() {
             file_operations::create_text_file,
             file_operations::list_files,
             data_operations::start_recording,
-            data_operations::start_data_parser,  // Add this line
+            data_operations::start_data_parser, 
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

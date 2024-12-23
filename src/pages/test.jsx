@@ -45,9 +45,6 @@ function TestPage() {
 
   const telemetryItem = {
     padding: '10px',
-    border: '1px solid #eee',
-    borderRadius: '3px',
-    backgroundColor: '#f5f5f5',
   };
 
   useEffect(() => {
