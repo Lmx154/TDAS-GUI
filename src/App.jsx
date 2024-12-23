@@ -9,7 +9,9 @@
 import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import "./styling/App.css";
+import { Route, Link, Routes } from "react-router-dom";
+import TestPage from "./pages/test.jsx";
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
@@ -52,6 +54,11 @@ function App() {
         <button type="submit">Greet</button>
       </form>
       <p>{greetMsg}</p>
+      <Link to="/test">Go to Test Page</Link>
+      <Routes>
+        <Route path="/" element={<div />} />
+        <Route path="/test" element={<TestPage />} />
+      </Routes>
     </main>
   );
 }

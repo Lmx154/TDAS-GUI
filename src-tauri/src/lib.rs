@@ -1,5 +1,6 @@
 // lib.rs
 mod serial_operations;
+mod data_operations;  // Add this line
 
 use serial_operations::SerialConnection;
 use std::sync::Mutex;
