@@ -25,11 +25,11 @@
 - [License](#license)
 - [Contact](#contact)
 
-## Why DAS-GUI?
+## Why DAS-GUI? 🤔
 
 In the realm of telemetry data acquisition, **efficiency**, **clarity**, and **reliability** are paramount. DAS-GUI stands out by combining the performance of Rust with the flexibility of React, offering a seamless experience for developers and analysts alike. Whether you're dealing with high-frequency data streams or require robust data parsing and visualization, DAS-GUI is engineered to meet your needs with precision and ease.
 
-## Features
+## Features ✨
 
 - **Serial Port Communication**: Effortlessly connect to and manage serial port connections.
 - **File Operations**: Create, list, and manage text files within the data directory.
@@ -40,7 +40,7 @@ In the realm of telemetry data acquisition, **efficiency**, **clarity**, and **r
 - **Real-time Updates**: Dynamic UI updates ensure you always have the latest data at your fingertips.
 - **Customizable Data Buffering**: Smooth out data for clearer visualization with adjustable buffering settings.
 
-## Technology Stack
+## Technology Stack 🛠️
 
 ### Frontend
 
@@ -63,9 +63,9 @@ In the realm of telemetry data acquisition, **efficiency**, **clarity**, and **r
 - 🛠️ **Vite Plugins**: Including `@vitejs/plugin-react` for React integration.
 - 🛠️ **PostCSS & Autoprefixer**: For CSS processing.
 
-## Getting Started
+## Getting Started 🚀
 
-### Prerequisites
+### Prerequisites 📋
 
 Before you begin, ensure you have the following installed on your system:
 
@@ -75,7 +75,7 @@ Before you begin, ensure you have the following installed on your system:
 - **Cargo** (comes with Rust)
 - **Git**
 
-### Installation
+### Installation 🛠️
 
 1. **Clone the Repository**
 
@@ -100,7 +100,7 @@ Before you begin, ensure you have the following installed on your system:
    cd ..
    ```
 
-### Running the Application
+### Running the Application ▶️
 
 Start the development server:
 
@@ -110,9 +110,9 @@ npm run tauri dev
 
 > **Note**: When making changes to the frontend, simply rerun the above command. For backend changes, you may need to clean and rebuild Cargo as described in the Development Workflow section.
 
-## Usage
+## Usage 📈
 
-### Serial Port Communication
+### Serial Port Communication 🔌
 
 Connect to your telemetry device via serial port:
 
@@ -128,7 +128,7 @@ Connect to your telemetry device via serial port:
 
    Easily disconnect when you're done.
 
-### Data Recording and Parsing
+### Data Recording and Parsing 📊
 
 1. **Start Recording**
 
@@ -142,7 +142,7 @@ Connect to your telemetry device via serial port:
 
    Create and list text files within the data directory to organize your recordings.
 
-### Real-time Data Visualization
+### Real-time Data Visualization 📉
 
 Monitor your telemetry data live with dynamic charts and tables:
 
@@ -151,9 +151,9 @@ Monitor your telemetry data live with dynamic charts and tables:
 - **GPS Data**: View location coordinates, speed, altitude, and satellite information.
 - **Signal Strength**: Monitor RSSI and SNR for connection quality insights.
 
-## Telemetry Data
+## Telemetry Data 📡
 
-### Data Format
+### Data Format 📝
 
 Data is received in the following structured format:
 
@@ -181,24 +181,24 @@ RSSI: -97
 Snr: 7.87
 ```
 
-### Data Buffering System
+### Data Buffering System 🗃️
 
 To ensure smooth and accurate real-time visualization, DAS-GUI implements a robust data buffering system.
 
-#### Configuration
+#### Configuration ⚙️
 
 - **Default Buffer Size**: 10 samples
 - **Default Output Rate**: 10Hz
 - **Input Data Rate**: ~100Hz
 
-#### How It Works
+#### How It Works 🛠️
 
 1. **Data Ingestion**: Raw telemetry data arrives at approximately 100Hz.
 2. **Circular Buffer Storage**: Data is stored in a `VecDeque` to maintain a fixed buffer size.
 3. **Averaging Mechanism**: Once the buffer is full and the emit interval is reached, data is averaged.
 4. **Emission**: Averaged data is emitted at the specified rate (default 10Hz) for smooth visualization.
 
-#### Adjusting the Buffer
+#### Adjusting the Buffer 🔧
 
 To modify buffer settings, locate the following line in `src-tauri/src/data_operations.rs`:
 
@@ -209,9 +209,9 @@ let buffer = Arc::new(Mutex::new(TelemetryBuffer::new(10, 10.0)));
 - **First Parameter**: Buffer size (number of samples)
 - **Second Parameter**: Emit rate in Hz
 
-## Development Workflow
+## Development Workflow 🔄
 
-### Initial Setup
+### Initial Setup 🛠️
 
 1. **Install Dependencies**
 
@@ -225,7 +225,7 @@ let buffer = Arc::new(Mutex::new(TelemetryBuffer::new(10, 10.0)));
    npm run tauri dev
    ```
 
-### Making Frontend Changes
+### Making Frontend Changes ✏️
 
 - Modify React components or Tailwind CSS styles.
 - Run the development server without cleaning Cargo:
@@ -234,7 +234,7 @@ let buffer = Arc::new(Mutex::new(TelemetryBuffer::new(10, 10.0)));
   npm run tauri dev
   ```
 
-### Making Backend Changes
+### Making Backend Changes 🔧
 
 1. **Clean Cargo Build**
 
@@ -254,7 +254,7 @@ let buffer = Arc::new(Mutex::new(TelemetryBuffer::new(10, 10.0)));
    npm run tauri dev
    ```
 
-## Building for Production
+## Building for Production 🏗️
 
 1. **Clean Cargo**
 
@@ -272,12 +272,12 @@ let buffer = Arc::new(Mutex::new(TelemetryBuffer::new(10, 10.0)));
 
    The built application will be available in the `src-tauri/target/release` directory.
 
-## Testing
+## Testing 🧪
 
 - **Run Tests**: Ensure all tests pass before creating a pull request or committing changes.
 - **Add New Tests**: Enhance test coverage for new features or bug fixes.
 
-## Contributing
+## Contributing 🤝
 
 Contributions are welcome! Whether you're reporting a bug, suggesting a feature, or submitting a pull request, your input is valuable.
 
