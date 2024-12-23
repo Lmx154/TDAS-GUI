@@ -5,6 +5,7 @@ function TestPage() {
   const [portName, setPortName] = useState("");
   const [baudRate, setBaudRate] = useState("");
   const [connectionMsg, setConnectionMsg] = useState("");
+  const [fileName, setFileName] = useState("");
 
   async function openSerialPort() {
     try {
@@ -12,6 +13,15 @@ function TestPage() {
       setConnectionMsg(message);
     } catch (error) {
       setConnectionMsg(`Error: ${error}`);
+    }
+  }
+
+  async function createFile() {
+    try {
+      await invoke("create_text_file", { fileName });
+      setConnectionMsg(`File ${fileName} created successfully`);
+    } catch (error) {
+      setConnectionMsg(`Error creating file: ${error}`);
     }
   }
 
@@ -39,6 +49,15 @@ function TestPage() {
         />
         <button type="submit">Open Serial Port</button>
       </form>
+      <div>
+        <input
+          type="text"
+          placeholder="File Name"
+          value={fileName}
+          onChange={(e) => setFileName(e.target.value)}
+        />
+        <button onClick={createFile}>Create File</button>
+      </div>
       <p>{connectionMsg}</p>
     </div>
   );
