@@ -1,4 +1,5 @@
 //DO NOT TOUCH THIS UNLESS YOU ABSOLUTELY UNDERSTAND WHAT YOU ARE DOING
+//CHECK OUT THE TESTING MODULE TO SEE HOW THIS CODE IS USED
 
 use std::io::Read;
 use std::thread;
@@ -23,18 +24,18 @@ pub struct TelemetryData {
     gyro_x: f32,
     gyro_y: f32,
     gyro_z: f32,
-    imu_temp: f32,        // was temp
-    bme_temp: f32,        // was press_alt
-    bme_pressure: f32,    // was heading
-    bme_altitude: f32,    // was ground_speed
-    bme_humidity: f32,    // was gps_num_sats
+    imu_temp: f32,       
+    bme_temp: f32,        
+    bme_pressure: f32,   
+    bme_altitude: f32,    
+    bme_humidity: f32,    
     gps_fix: u8,
-    gps_fix_quality: u8,  // was gps_3d_fix
-    gps_lat: f32,         // was latitude
-    gps_lon: f32,         // was longitude
-    gps_speed: f32,       // was altitude
-    gps_altitude: f32,    // was distance
-    gps_satellites: u8,   // was packet_number
+    gps_fix_quality: u8,  
+    gps_lat: f32,         
+    gps_lon: f32,        
+    gps_speed: f32,      
+    gps_altitude: f32,    
+    gps_satellites: u8,   
     rssi: i32,
     snr: f32,
 }

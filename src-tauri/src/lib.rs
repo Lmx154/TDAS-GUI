@@ -1,4 +1,4 @@
-// lib.rs
+// lib.rs - this file's sole purpose is to define the entry point for the Tauri app. AKA. Makes stuff available to the front end. Don't write any logic here.
 mod serial_operations;
 mod data_operations;
 mod file_operations;
