@@ -8,17 +8,13 @@
 
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import "./styling/App.css";
 import { Route, Link, Routes } from "react-router-dom";
 import TestPage from "./pages/test.jsx";
 
 function App() {
-
   return (
     <main className="container mx-auto p-4">
       <h1 className="text-3xl font-bold text-center mb-4">Welcome</h1>
-
-  
       <Link to="/test" className="text-blue-500 hover:underline">
         Go to Test Page
       </Link>
