@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 function TestPage() {
@@ -6,6 +6,20 @@ function TestPage() {
   const [baudRate, setBaudRate] = useState("");
   const [connectionMsg, setConnectionMsg] = useState("");
   const [fileName, setFileName] = useState("");
+  const [textFilePath, setTextFilePath] = useState("");
+  const [fileList, setFileList] = useState([]);
+
+  useEffect(() => {
+    async function fetchFiles() {
+      try {
+        const files = await invoke("list_files");
+        setFileList(files);
+      } catch (error) {
+        console.error("Error fetching files:", error);
+      }
+    }
+    fetchFiles();
+  }, []);
 
   async function openSerialPort() {
     try {
@@ -57,6 +71,19 @@ function TestPage() {
           onChange={(e) => setFileName(e.target.value)}
         />
         <button onClick={createFile}>Create File</button>
+      </div>
+      <div>
+        <select
+          value={textFilePath}
+          onChange={(e) => setTextFilePath(e.target.value)}
+        >
+          <option value="">Select file</option>
+          {fileList.map(([fileName, filePath]) => (
+            <option key={filePath} value={filePath}>
+              {fileName}
+            </option>
+          ))}
+        </select>
       </div>
       <p>{connectionMsg}</p>
     </div>

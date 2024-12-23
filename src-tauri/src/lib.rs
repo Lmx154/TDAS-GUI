@@ -15,7 +15,8 @@ pub fn run() {
             serial_operations::list_serial_ports,
             serial_operations::open_serial,
             serial_operations::close_serial,
-            file_operations::create_text_file,  // Add this line
+            file_operations::create_text_file,
+            file_operations::list_files,  // Add this line
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
