@@ -7,7 +7,7 @@ use crate::data_operations::debug_read_serial;
 
 pub struct SerialConnection(pub Mutex<Option<Box<dyn SerialPort + Send>>>);
 
-/// Lists all available serial ports on the system
+/// Lists all available serial ports on the system **NEEDS TO BE MODIFIED TO WORK ON LINUX AND MAC**
 #[tauri::command]
 pub fn list_serial_ports() -> Result<Vec<String>, String> {
     match serialport::available_ports() {

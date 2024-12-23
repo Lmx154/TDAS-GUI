@@ -6,7 +6,7 @@ use std::path::Path;
 #[tauri::command]
 pub fn create_text_file(file_name: &str) -> Result<(), String> {
     // Use relative path to the data directory
-    let test_dir = "./data";
+    let test_dir = "../data";
     
     // Ensure the file name has a .txt extension
     let file_name = if file_name.ends_with(".txt") {
@@ -29,9 +29,9 @@ pub fn create_text_file(file_name: &str) -> Result<(), String> {
 
 #[tauri::command]
 pub fn list_files() -> Result<Vec<(String, String)>, String> {
-    let data_dir = "./data";
+    let data_dir = "../data";
     
-    // Create directory if it doesn't exist
+    // Refresh the directory by reading it again
     if !Path::new(data_dir).exists() {
         std::fs::create_dir_all(data_dir).map_err(|e| e.to_string())?;
     }

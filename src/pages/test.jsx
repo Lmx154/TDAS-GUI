@@ -4,11 +4,12 @@ import { listen } from "@tauri-apps/api/event";
 
 function TestPage() {
   const [portName, setPortName] = useState("");
-  const [baudRate, setBaudRate] = useState("");
+  const [baudRate, setBaudRate] = useState("115200");
   const [connectionMsg, setConnectionMsg] = useState("");
   const [fileName, setFileName] = useState("");
   const [textFilePath, setTextFilePath] = useState("");
   const [fileList, setFileList] = useState([]);
+  const [portList, setPortList] = useState([]);
   const [telemetry, setTelemetry] = useState({
     timestamp: "",
     accel_x: 0,
@@ -44,6 +45,16 @@ function TestPage() {
     }
     fetchFiles();
 
+    async function fetchPorts() {
+      try {
+        const ports = await invoke("list_serial_ports");
+        setPortList(ports);
+      } catch (error) {
+        console.error("Error fetching ports:", error);
+      }
+    }
+    fetchPorts();
+
     // Listen for telemetry updates
     const unlisten = listen("telemetry-update", (event) => {
       setTelemetry(event.payload);
@@ -53,6 +64,15 @@ function TestPage() {
       unlisten.then(f => f()); // Cleanup listener when component unmounts
     };
   }, []);
+
+  async function fetchFiles() {
+    try {
+      const files = await invoke("list_files");
+      setFileList(files);
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    }
+  }
 
   async function openSerialPort() {
     try {
@@ -100,13 +120,18 @@ function TestPage() {
         }}
         className="mb-4"
       >
-        <input
-          type="text"
-          placeholder="Port Name"
+        <select
           value={portName}
           onChange={(e) => setPortName(e.target.value)}
           className="border rounded p-2 mr-2"
-        />
+        >
+          <option value="">Select Port</option>
+          {portList.map((port) => (
+            <option key={port} value={port}>
+              {port}
+            </option>
+          ))}
+        </select>
         <input
           type="text"
           placeholder="Baud Rate"
@@ -136,6 +161,7 @@ function TestPage() {
         <select
           value={textFilePath}
           onChange={(e) => setTextFilePath(e.target.value)}
+          onClick={fetchFiles} // Fetch files every time the dropdown is clicked
           className="border rounded p-2"
         >
           <option value="">Select file</option>
