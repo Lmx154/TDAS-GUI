@@ -7,40 +7,19 @@
 //THIS FILE SHOULD ONLY CONTAIN THE FRONTEND LOGIC, EG. REACT COMPONENTS, STATE MANAGEMENT, ETC
 
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
 import "./styling/App.css";
 import { Route, Link, Routes } from "react-router-dom";
 import TestPage from "./pages/test.jsx";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+    <main className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold text-center mb-4">Welcome to Tauri + React</h1>
 
       <form
-        className="row"
+        className="flex justify-center mb-4"
         onSubmit={(e) => {
           e.preventDefault();
           greet();
@@ -50,11 +29,15 @@ function App() {
           id="greet-input"
           onChange={(e) => setName(e.currentTarget.value)}
           placeholder="Enter a name..."
+          className="border rounded p-2 mr-2"
         />
-        <button type="submit">Greet</button>
+        <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+          Greet
+        </button>
       </form>
-      <p>{greetMsg}</p>
-      <Link to="/test">Go to Test Page</Link>
+      <Link to="/test" className="text-blue-500 hover:underline">
+        Go to Test Page
+      </Link>
       <Routes>
         <Route path="/" element={<div />} />
         <Route path="/test" element={<TestPage />} />
