@@ -6,15 +6,13 @@
 //IF YOU ANSWERED YES TO ANY OF THE ABOVE, PLEASE MOVE TO THE APPROPRIATE FILE, OR CREATE A NEW ONE
 //THIS FILE SHOULD ONLY CONTAIN THE FRONTEND LOGIC, EG. REACT COMPONENTS, STATE MANAGEMENT, ETC
 
-import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { Route, Link, Routes } from "react-router-dom";
 import TestPage from "./pages/test.jsx";
 
 function App() {
   return (
     <main className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-4">Welcome</h1>
+      <h1 className="text-xl font-bold text-red-500">Welcome</h1>
       <Link to="/test" className="text-blue-500 hover:underline">
         Go to Test Page
       </Link>
