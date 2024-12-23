@@ -169,41 +169,44 @@ impl TelemetryBuffer {
     }
 }
 
-pub fn debug_read_serial(mut port: Box<dyn SerialPort + Send>) {
-    thread::spawn(move || {
-        let mut serial_buf: Vec<u8> = vec![0; 1024];
-        let mut accumulated_data = String::new();
+//-------------------------------IMPORTANT DEBUG FUNCTION DO NOT REMOVE----------------------------------------------------
+// pub fn debug_read_serial(mut port: Box<dyn SerialPort + Send>) {
+//     thread::spawn(move || {
+//         let mut serial_buf: Vec<u8> = vec![0; 1024];
+//         let mut accumulated_data = String::new();
 
-        loop {
-            match port.read(serial_buf.as_mut_slice()) {
-                Ok(t) => {
-                    if t > 0 {
-                        // Convert bytes to string and append to accumulated data
-                        accumulated_data.push_str(&String::from_utf8_lossy(&serial_buf[..t]));
+//         loop {
+//             match port.read(serial_buf.as_mut_slice()) {
+//                 Ok(t) => {
+//                     if t > 0 {
+//                         // Convert bytes to string and append to accumulated data
+//                         accumulated_data.push_str(&String::from_utf8_lossy(&serial_buf[..t]));
 
-                        // Process complete messages
-                        while let Some(pos) = accumulated_data.find("\r\n") {
-                            let line = accumulated_data[..pos].trim_start_matches('$');
-                            if !line.is_empty() {
-                                // Simple formatting for each line
-                                println!("{}", line);
-                            }
-                            accumulated_data = accumulated_data[pos + 2..].to_string();
-                        }
-                    }
-                }
-                Err(e) => {
-                    if e.kind() == std::io::ErrorKind::TimedOut {
-                        thread::sleep(Duration::from_millis(100));
-                        continue;
-                    }
-                    println!("Critical error reading from port: {}", e);
-                    break;
-                }
-            }
-        }
-    });
-}
+//                         // Process complete messages
+//                         while let Some(pos) = accumulated_data.find("\r\n") {
+//                             let line = accumulated_data[..pos].trim_start_matches('$');
+//                             if !line.is_empty() {
+//                                 // Simple formatting for each line
+//                                 println!("{}", line);
+//                             }
+//                             accumulated_data = accumulated_data[pos + 2..].to_string();
+//                         }
+//                     }
+//                 }
+//                 Err(e) => {
+//                     if e.kind() == std::io::ErrorKind::TimedOut {
+//                         thread::sleep(Duration::from_millis(100));
+//                         continue;
+//                     }
+//                     println!("Critical error reading from port: {}", e);
+//                     break;
+//                 }
+//             }
+//         }
+//     });
+// }
+//----------------------------------------------------------------------------------------------------------------------------
+
 
 fn parse_telemetry(message: &str, rssi: i32, snr: f32) -> Option<TelemetryData> {
     // Extract timestamp and data parts

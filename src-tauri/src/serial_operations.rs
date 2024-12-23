@@ -3,7 +3,7 @@ use serialport::SerialPort;
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::State;
-use crate::data_operations::debug_read_serial;
+//use crate::data_operations::debug_read_serial;        UNCOMMENT TO DEBUG SERIAL DATA FLOW
 
 pub struct SerialConnection(pub Mutex<Option<Box<dyn SerialPort + Send>>>);
 
@@ -32,12 +32,11 @@ pub async fn open_serial(
         .open()
     {
         Ok(port) => {
-            let port_clone = port.try_clone().unwrap();
+            // let port_clone = port.try_clone().unwrap();   UNCOMMENT TO DEBUG SERIAL DATA FLOW
             let mut connection = serial_connection.0.lock().unwrap();
             *connection = Some(port);
             
-            // Call the debug function
-            debug_read_serial(port_clone);
+            // debug_read_serial(port_clone);           UNCOMMENT TO DEBUG SERIAL DATA FLOW
 
             let message = format!("Connected to {} at {} baud", port_name, baud_rate);
             println!("{}", message); // Debug print statement
