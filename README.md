@@ -1,62 +1,170 @@
-# TDAS-GUI 🚀
+# DAS-GUI 🚀
 
-TDAS-GUI is a graphical user interface for telemetry data acquisition and analysis.
+![DAS-GUI Banner](https://via.placeholder.com/800x200?text=DAS-GUI+Banner)
 
-## Front end
-- ⚡ **Vite**
-- ⚛️ **React JS**
-- 🎨 **Tailwind CSS**
+**DAS-GUI** (Telemetry Data Acquisition System GUI) is a robust and user-friendly graphical interface designed for telemetry data acquisition and analysis. Whether you're monitoring drone flights, vehicle telemetry, or other high-frequency data streams, DAS-GUI provides the essential tools to visualize, record, and interpret your data seamlessly.
 
-## Back end 
-- 🦀 **Rust**
-- 🖥️ **Tauri**
+## Table of Contents
+
+- [Why DAS-GUI?](#why-das-gui)
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Running the Application](#running-the-application)
+- [Usage](#usage)
+  - [Serial Port Communication](#serial-port-communication)
+  - [Data Recording and Parsing](#data-recording-and-parsing)
+  - [Real-time Data Visualization](#real-time-data-visualization)
+- [Telemetry Data](#telemetry-data)
+  - [Data Format](#data-format)
+  - [Data Buffering System](#data-buffering-system)
+- [Development Workflow](#development-workflow)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+
+## Why DAS-GUI?
+
+In the realm of telemetry data acquisition, **efficiency**, **clarity**, and **reliability** are paramount. DAS-GUI stands out by combining the performance of Rust with the flexibility of React, offering a seamless experience for developers and analysts alike. Whether you're dealing with high-frequency data streams or require robust data parsing and visualization, DAS-GUI is engineered to meet your needs with precision and ease.
 
 ## Features
 
-- **Serial Port Communication**: Open and close serial port connections (Rust). See [`serial_operations.rs`](src-tauri/src/serial_operations.rs).
-- **File Operations**: Create and list text files in the data directory (Rust). See [`file_operations.rs`](src-tauri/src/file_operations.rs).
-- **Telemetry Data Display**: Real-time display of telemetry data including acceleration, gyroscope, temperature, pressure, altitude, humidity, GPS data, and signal strength (Rust). See [`data_operations.rs`](src-tauri/src/data_operations.rs).
-- **Data Recording**: Record serial data to a text file. Data recording happens at full speed without buffering, thanks to Rust's performance and concurrency capabilities. See [`data_operations.rs`](src-tauri/src/data_operations.rs).
-- **Data Parsing**: Parse incoming serial data and compute averaged telemetry data. Rust's speed and efficiency ensure quick and accurate data parsing. See [`data_operations.rs`](src-tauri/src/data_operations.rs).
-- **Real-time Updates**: Listen for telemetry updates and display them in the UI (ReactJS).
-- **High-Frequency Data Handling**: Record data and get real-time telemetry data at 100Hz with no issues, leveraging Rust's performance.
+- **Serial Port Communication**: Effortlessly connect to and manage serial port connections.
+- **File Operations**: Create, list, and manage text files within the data directory.
+- **Real-time Telemetry Display**: Monitor acceleration, gyroscope, temperature, pressure, altitude, humidity, GPS data, and signal strength in real-time.
+- **Data Recording**: Capture and store serial data at full speed without buffering delays.
+- **Data Parsing**: Efficiently parse incoming data and compute averaged telemetry metrics.
+- **High-Frequency Data Handling**: Manage and visualize data at up to 100Hz seamlessly.
+- **Real-time Updates**: Dynamic UI updates ensure you always have the latest data at your fingertips.
+- **Customizable Data Buffering**: Smooth out data for clearer visualization with adjustable buffering settings.
 
-## Telemetry Data Buffering System
+## Technology Stack
 
-### Telemetry Data Table
+### Frontend
 
-| Value in Data String | Mapped Variable   | Description                                   |
-|----------------------|-------------------|-----------------------------------------------|
-| `0.08`               | `accel_x`         | IMU X-axis acceleration (m/s²)                |
-| `-0.40`              | `accel_y`         | IMU Y-axis acceleration (m/s²)                |
-| `-9.74`              | `accel_z`         | IMU Z-axis acceleration (m/s²)                |
-| `14.00`              | `gyro_x`          | IMU X-axis angular velocity (°/s)             |
-| `16.00`              | `gyro_y`          | IMU Y-axis angular velocity (°/s)             |
-| `-96.00`             | `gyro_z`          | IMU Z-axis angular velocity (°/s)             |
-| `31.25`              | `imu_temp`        | IMU internal temperature (°C)                 |
-| `33.56`              | `bme_temp`        | BME280 temperature reading (°C)               |
-| `1009.91`            | `bme_pressure`    | BME280 atmospheric pressure (hPa)             |
-| `-31.06`             | `bme_altitude`    | BME280 altitude (m)                           |
-| `35.39`              | `bme_humidity`    | BME280 humidity (%)                           |
-| `1`                  | `gps_fix`         | GPS fix status (1 = fixed, 0 = not fixed)     |
-| `2`                  | `gps_fix_quality` | GPS fix quality (e.g., 1 = GPS fix, 2 = DGPS) |
-| `26.273800`          | `gps_lat`         | GPS latitude (decimal degrees)                |
-| `-98.431976`         | `gps_lon`         | GPS longitude (decimal degrees)               |
-| `0.16`               | `gps_speed`       | GPS ground speed (m/s)                        |
-| `68.00`              | `gps_altitude`    | GPS altitude (m)                              |
-| `8`                  | `gps_satellites`  | Number of GPS satellites in use               |
+- ⚡ **Vite**: Fast and modern frontend build tool.
+- ⚛️ **React JS**: Flexible and efficient JavaScript library for building user interfaces.
+- 🎨 **Tailwind CSS**: Utility-first CSS framework for rapid UI development.
+- 🛠️ **React Router DOM**: Declarative routing for React applications.
 
-## Telemetry Data Format
+### Backend
 
-Data is input in the following format:
+- 🦀 **Rust**: High-performance systems programming language ensuring speed and reliability.
+- 🖥️ **Tauri**: Build smaller, faster, and more secure desktop applications with Rust and web technologies.
+- 📦 **Serialport**: Cross-platform serial port library for Rust.
+- 🕰️ **Chrono**: Date and time library for Rust.
+- ⚡ **Tokio**: Asynchronous runtime for Rust.
+
+### Build Tools
+
+- 🛠️ **Tauri CLI**: Command-line interface for Tauri.
+- 🛠️ **Vite Plugins**: Including `@vitejs/plugin-react` for React integration.
+- 🛠️ **PostCSS & Autoprefixer**: For CSS processing.
+
+## Getting Started
+
+### Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+- **Node.js** (v16 or later)
+- **npm** (v7 or later)
+- **Rust** (v1.60 or later)
+- **Cargo** (comes with Rust)
+- **Git**
+
+### Installation
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/yourusername/das-gui.git
+   cd das-gui
+   ```
+
+2. **Install Frontend Dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Build the Backend**
+
+   Navigate to the backend directory and build the Rust components.
+
+   ```bash
+   cd src-tauri
+   cargo build
+   cd ..
+   ```
+
+### Running the Application
+
+Start the development server:
+
+```bash
+npm run tauri dev
+```
+
+> **Note**: When making changes to the frontend, simply rerun the above command. For backend changes, you may need to clean and rebuild Cargo as described in the Development Workflow section.
+
+## Usage
+
+### Serial Port Communication
+
+Connect to your telemetry device via serial port:
+
+1. **List Available Ports**
+
+   Use the application interface to view available serial ports.
+
+2. **Open a Connection**
+
+   Select the desired port and baud rate, then establish a connection.
+
+3. **Close the Connection**
+
+   Easily disconnect when you're done.
+
+### Data Recording and Parsing
+
+1. **Start Recording**
+
+   Begin capturing serial data to a text file with a single click.
+
+2. **Automatic Parsing**
+
+   DAS-GUI parses incoming data in real-time, computing averaged telemetry metrics for clarity.
+
+3. **Manage Files**
+
+   Create and list text files within the data directory to organize your recordings.
+
+### Real-time Data Visualization
+
+Monitor your telemetry data live with dynamic charts and tables:
+
+- **Acceleration & Gyroscope**: Visualize motion data across all three axes.
+- **Environmental Metrics**: Track temperature, pressure, altitude, and humidity.
+- **GPS Data**: View location coordinates, speed, altitude, and satellite information.
+- **Signal Strength**: Monitor RSSI and SNR for connection quality insights.
+
+## Telemetry Data
+
+### Data Format
+
+Data is received in the following structured format:
 
 ```
 [timestamp] accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, imu_temp, bme_temp, bme_pressure, bme_altitude, bme_humidity, gps_fix, gps_fix_quality, gps_lat, gps_lon, gps_speed, gps_altitude, gps_satellites
 ```
 
-### Example Input
+#### Example Inputs
 
 **Standby Mode:**
+
 ```
 $Message length: 115
 Message: [2024/12/19 (Thursday) 13:06:42] 0.0,0.0,0.0,0.0,0.0,0.0,30.57,35.0,1013.25,0.0,20.0,1,2,32.9394,-106.922,0.0,0.0,8
@@ -65,6 +173,7 @@ Snr: 7.39
 ```
 
 **Launch Mode:**
+
 ```
 $Message length: 130
 Message: [2024/12/19 (Thursday) 13:00:02] 15.1,-0.02,-0.4,82.33,-65.0,72.93,31.17,7.52,616.2,4003.17,0,1,2,32.9394,-106.922,82.16,4227.45,8
@@ -72,48 +181,126 @@ RSSI: -97
 Snr: 7.87
 ```
 
-The application implements a data buffering system to smooth out high-frequency telemetry data for smoother real-time data visualization:
+### Data Buffering System
 
-### Configuration
-- Default buffer size: 10 samples
-- Default output rate: 10Hz
-- Input data rate: ~100Hz
+To ensure smooth and accurate real-time visualization, DAS-GUI implements a robust data buffering system.
 
-### How it works
-1. Raw telemetry data comes in at ~100Hz
-2. Data is stored in a circular buffer (VecDeque)
-3. When buffer is full:
-   - Oldest sample is removed
-   - New sample is added
-   - Average is computed if enough time has passed
-4. Averaged data is emitted at specified rate (default 10Hz)
+#### Configuration
 
-### Adjusting the Buffer
-To modify the buffer settings, locate this line in `src-tauri/src/data_operations.rs`:
+- **Default Buffer Size**: 10 samples
+- **Default Output Rate**: 10Hz
+- **Input Data Rate**: ~100Hz
+
+#### How It Works
+
+1. **Data Ingestion**: Raw telemetry data arrives at approximately 100Hz.
+2. **Circular Buffer Storage**: Data is stored in a `VecDeque` to maintain a fixed buffer size.
+3. **Averaging Mechanism**: Once the buffer is full and the emit interval is reached, data is averaged.
+4. **Emission**: Averaged data is emitted at the specified rate (default 10Hz) for smooth visualization.
+
+#### Adjusting the Buffer
+
+To modify buffer settings, locate the following line in `src-tauri/src/data_operations.rs`:
 
 ```rust
 let buffer = Arc::new(Mutex::new(TelemetryBuffer::new(10, 10.0)));
 ```
 
-## Workflow
+- **First Parameter**: Buffer size (number of samples)
+- **Second Parameter**: Emit rate in Hz
 
-1. First run: `npm install`
-2. Second run: `npm run tauri dev`
+## Development Workflow
 
-When making changes to the frontend, you can get away with not cleaning cargo and just running: `npm run tauri dev`
+### Initial Setup
 
-If you make any changes to the backend, no matter how small, clean cargo by navigating to `src-tauri` (assuming you're in project root): `cd src-tauri`
-then run: `cargo clean`
-after that you can go back to root: `cd ..`
-now you can test your changes using: `npm run tauri dev`
+1. **Install Dependencies**
 
-## Build 
+   ```bash
+   npm install
+   ```
 
-Always clean cargo before build. To do this first you must change directory to `src-tauri` (assuming you're in project root): `cd src-tauri`
-next, run: `cargo clean`
-then you should go back to root: `cd ..`
-after cargo has been cleaned you can now build: `npm run tauri build`
+2. **Start Development Server**
 
-## Testing 
+   ```bash
+   npm run tauri dev
+   ```
 
-Run tests before making a PR or committing your changes.
+### Making Frontend Changes
+
+- Modify React components or Tailwind CSS styles.
+- Run the development server without cleaning Cargo:
+
+  ```bash
+  npm run tauri dev
+  ```
+
+### Making Backend Changes
+
+1. **Clean Cargo Build**
+
+   Navigate to the backend directory and clean the Cargo build:
+
+   ```bash
+   cd src-tauri
+   cargo clean
+   cd ..
+   ```
+
+2. **Rebuild and Run**
+
+   Restart the development server:
+
+   ```bash
+   npm run tauri dev
+   ```
+
+## Building for Production
+
+1. **Clean Cargo**
+
+   ```bash
+   cd src-tauri
+   cargo clean
+   cd ..
+   ```
+
+2. **Build the Application**
+
+   ```bash
+   npm run tauri build
+   ```
+
+   The built application will be available in the `src-tauri/target/release` directory.
+
+## Testing
+
+- **Run Tests**: Ensure all tests pass before creating a pull request or committing changes.
+- **Add New Tests**: Enhance test coverage for new features or bug fixes.
+
+## Contributing
+
+Contributions are welcome! Whether you're reporting a bug, suggesting a feature, or submitting a pull request, your input is valuable.
+
+1. **Fork the Repository**
+
+2. **Create a Feature Branch**
+
+   ```bash
+   git checkout -b feature/YourFeature
+   ```
+
+3. **Commit Your Changes**
+
+   ```bash
+   git commit -m "Add your message"
+   ```
+
+4. **Push to the Branch**
+
+   ```bash
+   git push origin feature/YourFeature
+   ```
+
+5. **Open a Pull Request**
+
+Please ensure your code adheres to the project's coding standards and includes relevant tests.
