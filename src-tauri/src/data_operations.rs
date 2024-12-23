@@ -6,6 +6,8 @@ use std::time::Duration;
 use serialport::SerialPort;
 use std::fs::OpenOptions;
 use std::io::Write;
+use crate::serial_operations::SerialConnection;
+use tauri::State;
 
 pub fn debug_read_serial(mut port: Box<dyn SerialPort + Send>) {
     thread::spawn(move || {
@@ -43,7 +45,8 @@ pub fn debug_read_serial(mut port: Box<dyn SerialPort + Send>) {
     });
 }
 
-pub fn write_serial_to_file(mut port: Box<dyn SerialPort + Send>, file_path: String) {
+
+pub(crate) fn write_serial_to_file(mut port: Box<dyn SerialPort + Send>, file_path: String) {
     thread::spawn(move || {
         let mut serial_buf: Vec<u8> = vec![0; 1024];
         let mut accumulated_data = String::new();
@@ -71,7 +74,6 @@ pub fn write_serial_to_file(mut port: Box<dyn SerialPort + Send>, file_path: Str
                         while let Some(pos) = accumulated_data.find("\r\n") {
                             let line = accumulated_data[..pos].trim_start_matches('$');
                             if !line.is_empty() {
-                                // Write the line to file with a newline
                                 if let Err(e) = writeln!(file, "{}", line) {
                                     println!("Failed to write to file: {}", e);
                                     return;
@@ -92,4 +94,18 @@ pub fn write_serial_to_file(mut port: Box<dyn SerialPort + Send>, file_path: Str
             }
         }
     });
+}
+
+// Add new Tauri command that uses SerialConnection state
+#[tauri::command]
+pub fn start_recording(file_path: String, serial_connection: State<'_, SerialConnection>) -> Result<String, String> {
+    let connection = serial_connection.0.lock().unwrap();
+    match connection.as_ref() {
+        Some(port) => {
+            let port_clone = port.try_clone().map_err(|e| e.to_string())?;
+            write_serial_to_file(port_clone, file_path.clone());
+            Ok(format!("Started recording to {}", file_path))
+        }
+        None => Err("No active serial connection".to_string()),
+    }
 }

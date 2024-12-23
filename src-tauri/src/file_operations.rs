@@ -3,6 +3,8 @@
 use std::fs::{self, File};
 use std::path::Path;
 
+
+
 #[tauri::command]
 pub fn create_text_file(file_name: &str) -> Result<(), String> {
     // Use relative path to the data directory

@@ -1,7 +1,7 @@
 // lib.rs
 mod serial_operations;
 mod data_operations;
-mod file_operations;  // Add this line
+mod file_operations;
 
 use serial_operations::SerialConnection;
 use std::sync::Mutex;
@@ -16,7 +16,8 @@ pub fn run() {
             serial_operations::open_serial,
             serial_operations::close_serial,
             file_operations::create_text_file,
-            file_operations::list_files,  // Add this line
+            file_operations::list_files,
+            data_operations::start_recording,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -39,6 +39,15 @@ function TestPage() {
     }
   }
 
+  async function writeSerialToFile() {
+    try {
+        const result = await invoke("start_recording", { filePath: textFilePath });
+        setConnectionMsg(result);
+    } catch (error) {
+        setConnectionMsg(`Error starting recording: ${error}`);
+    }
+  }
+
   return (
     <div>
       <h1>Test Page</h1>
@@ -85,6 +94,7 @@ function TestPage() {
           ))}
         </select>
       </div>
+      <button onClick={writeSerialToFile}>Start Record</button>
       <p>{connectionMsg}</p>
     </div>
   );
