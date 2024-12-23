@@ -1,4 +1,4 @@
-# TDAS-GUI
+# TDAS-GUI 🚀
 
 TDAS-GUI is a graphical user interface for telemetry data acquisition and analysis.
 
