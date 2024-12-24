@@ -1,67 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-
-function TelemetryDisplay({ telemetry }) {
-  return (
-    <div className="grid grid-cols-4 gap-4 p-4 border rounded mt-4 bg-white/30 backdrop-blur-md">
-      <div className="p-2">
-        <strong>Timestamp:</strong>
-        <div>{telemetry.timestamp}</div>
-      </div>
-      <div className="p-2">
-        <strong>Acceleration (m/s²):</strong>
-        <div>X: {telemetry.accel_x.toFixed(2)}</div>
-        <div>Y: {telemetry.accel_y.toFixed(2)}</div>
-        <div>Z: {telemetry.accel_z.toFixed(2)}</div>
-      </div>
-      <div className="p-2">
-        <strong>Gyroscope (deg/s):</strong>
-        <div>X: {telemetry.gyro_x.toFixed(2)}</div>
-        <div>Y: {telemetry.gyro_y.toFixed(2)}</div>
-        <div>Z: {telemetry.gyro_z.toFixed(2)}</div>
-      </div>
-      <div className="p-2">
-        <strong>IMU Temperature (°C):</strong>
-        <div>{telemetry.imu_temp.toFixed(1)}</div>
-      </div>
-      <div className="p-2">
-        <strong>BME Temperature (°C):</strong>
-        <div>{telemetry.bme_temp.toFixed(1)}</div>
-      </div>
-      <div className="p-2">
-        <strong>BME Pressure (hPa):</strong>
-        <div>{telemetry.bme_pressure.toFixed(1)}</div>
-      </div>
-      <div className="p-2">
-        <strong>BME Altitude (m):</strong>
-        <div>{telemetry.bme_altitude.toFixed(1)}</div>
-      </div>
-      <div className="p-2">
-        <strong>BME Humidity (%):</strong>
-        <div>{telemetry.bme_humidity.toFixed(1)}</div>
-      </div>
-      <div className="p-2">
-        <strong>GPS:</strong>
-        <div>Fix: {telemetry.gps_fix}</div>
-        <div>Fix Quality: {telemetry.gps_fix_quality}</div>
-        <div>Satellites: {telemetry.gps_satellites}</div>
-      </div>
-      <div className="p-2">
-        <strong>Position:</strong>
-        <div>Lat: {telemetry.gps_lat.toFixed(4)}</div>
-        <div>Lon: {telemetry.gps_lon.toFixed(4)}</div>
-        <div>Speed: {telemetry.gps_speed.toFixed(2)} m/s</div>
-        <div>Alt: {telemetry.gps_altitude.toFixed(1)} m</div>
-      </div>
-      <div className="p-2">
-        <strong>Signal:</strong>
-        <div>RSSI: {telemetry.rssi}</div>
-        <div>SNR: {telemetry.snr.toFixed(2)}</div>
-      </div>
-    </div>
-  );
-}
+import TelemetryDisplay from "../components/telemetry_panel";
+import RocketModel from "../components/3drocket";
+import LineChart from "../components/chart";
 
 function TestPage() {
   const [portName, setPortName] = useState("");
@@ -96,6 +38,8 @@ function TestPage() {
     snr: 0,
   });
 
+  const [telemetryData, setTelemetryData] = useState([]);
+
   useEffect(() => {
     async function fetchFiles() {
       try {
@@ -120,6 +64,7 @@ function TestPage() {
     // Listen for telemetry updates
     const unlisten = listen("telemetry-update", (event) => {
       setTelemetry(event.payload);
+      setTelemetryData(prevData => [...prevData, event.payload]);
     });
 
     return () => {
@@ -246,6 +191,32 @@ function TestPage() {
       </div>
 
       <TelemetryDisplay telemetry={telemetry} />
+      <RocketModel gyro_x={telemetry.gyro_x} gyro_y={telemetry.gyro_y} gyro_z={telemetry.gyro_z} />
+
+      <LineChart
+        data={telemetryData}
+        xAccessor={d => new Date(d.timestamp)}
+        yAccessor={d => d.bme_temp}
+        color="red"
+      />
+      <LineChart
+        data={telemetryData}
+        xAccessor={d => new Date(d.timestamp)}
+        yAccessor={d => d.imu_temp}
+        color="blue"
+      />
+      <LineChart
+        data={telemetryData}
+        xAccessor={d => new Date(d.timestamp)}
+        yAccessor={d => d.bme_pressure}
+        color="green"
+      />
+      <LineChart
+        data={telemetryData}
+        xAccessor={d => new Date(d.timestamp)}
+        yAccessor={d => d.gps_speed}
+        color="purple"
+      />
     </div>
   );
 }
