@@ -5,6 +5,9 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 function RocketModel({ gyro_x, gyro_y, gyro_z }) {
   const mountRef = useRef(null);
+  const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const animationFrameRef = useRef(null);
 
   // Current actual rotation in the scene
   const currentRotationRef = useRef(new THREE.Euler(0, 0, 0, 'XYZ'));
@@ -24,6 +27,7 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
   useEffect(() => {
     const mount = mountRef.current;
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
@@ -36,6 +40,7 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    rendererRef.current = renderer;
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setClearColor(0x000000, 0);
     renderer.physicallyCorrectLights = true;
@@ -59,9 +64,15 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
     camera.add(cameraLight);
     scene.add(camera);
 
+    // Store materials and geometries for proper cleanup
+    const materials = new Set();
+    const geometries = new Set();
+
     // Orientation "stick" for debugging
     const stickGeometry = new THREE.BoxGeometry(0.1, 5, 0.1);
     const stickMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    geometries.add(stickGeometry);
+    materials.add(stickMaterial);
     const orientationStick = new THREE.Mesh(stickGeometry, stickMaterial);
     orientationStick.rotation.order = 'XYZ';
     orientationStick.position.set(0, 0, 0);
@@ -80,11 +91,14 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
 
         rocket.traverse((node) => {
           if (node.isMesh) {
-            node.material = new THREE.MeshStandardMaterial({
+            if (node.geometry) geometries.add(node.geometry);
+            const material = new THREE.MeshStandardMaterial({
               color: 0xffffff,
               metalness: 1.0,
               roughness: 0.1,
             });
+            materials.add(material);
+            node.material = material;
           }
         });
 
@@ -99,10 +113,10 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
 
     // Animation loop
     const animate = () => {
-      requestAnimationFrame(animate);
+      animationFrameRef.current = requestAnimationFrame(animate);
       
       // Lerp the rocket’s rotation to the target
-      if (rocketRef.current) {
+      if (!document.hidden && rocketRef.current) {
         currentRotationRef.current.x +=
           (targetRotationRef.current.x - currentRotationRef.current.x) * lerpFactor;
         currentRotationRef.current.y +=
@@ -135,11 +149,37 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameRef.current);
+      
+      // Cleanup materials
+      materials.forEach(material => {
+        material.dispose();
+      });
+
+      // Cleanup geometries
+      geometries.forEach(geometry => {
+        geometry.dispose();
+      });
+
+      // Cleanup scene
+      scene.traverse(object => {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(material => material.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      });
+
       controls.dispose();
-      if (renderer.domElement) {
+      renderer.dispose();
+      if (renderer.domElement && mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);
       }
-      renderer.dispose();
     };
   }, []);
 

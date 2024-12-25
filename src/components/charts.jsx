@@ -9,7 +9,7 @@ function LineChart({
   color = "steelblue",
   width = 600,
   height = 400,
-  margin = { top: 50, right: 30, bottom: 30, left: 40 }, // Increased top margin for title
+  margin = { top: 50, right: 30, bottom: 30, left: 50 }, // Adjusted left margin for possible negative labels
   title = "", // Default empty title
 }) {
   const svgRef = useRef(null);
@@ -22,9 +22,27 @@ function LineChart({
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    // Compute the maximum y-value and round it up to the nearest multiple
-    const yMax = d3.max(data, yAccessor);
-    const yDomainMax = Math.ceil(yMax / 10) * 10 || 10; // Avoid yDomainMax being 0
+    // Compute y-axis domain based on data
+    let yMin = d3.min(data, yAccessor);
+    let yMax = d3.max(data, yAccessor);
+
+    // Handle cases where data is empty or yMin/yMax are undefined
+    if (yMin === undefined || yMax === undefined) {
+      yMin = 0;
+      yMax = 10;
+    }
+
+    // Round yMin down and yMax up to the nearest multiple of 10
+    let yDomainMin = Math.floor(yMin / 10) * 10;
+    let yDomainMax = Math.ceil(yMax / 10) * 10;
+
+    // Ensure that yDomainMin and yDomainMax are not the same
+    if (yDomainMin === yDomainMax) {
+      yDomainMax = yDomainMin + 10;
+      if (yMin < 0) {
+        yDomainMin = yDomainMin - 10;
+      }
+    }
 
     // Create scales
     const xScale = d3.scaleTime()
@@ -32,8 +50,9 @@ function LineChart({
       .range([0, innerWidth]);
 
     const yScale = d3.scaleLinear()
-      .domain([0, yDomainMax])
-      .range([innerHeight, 0]);
+      .domain([yDomainMin, yDomainMax])
+      .range([innerHeight, 0])
+      .nice(); // Ensures the domain is rounded nicely
 
     // Create axes
     const xAxis = d3.axisBottom(xScale).ticks(6);
