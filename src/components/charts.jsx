@@ -11,7 +11,7 @@ function LineChart({
   height = 400,
   margin = { top: 50, right: 30, bottom: 30, left: 50 },
   title = "",
-  timeWindow = 30000, // 30 seconds default
+  timeWindow = 20000, // Increased to 20 seconds
 }) {
   const svgRef = useRef(null);
 
@@ -25,7 +25,7 @@ function LineChart({
       return (now - timestamp) <= timeWindow;
     });
 
-    if (filtered.length === 0) return;
+    console.log('Filtered data length:', filtered.length); // Added log
 
     // Clear previous content
     const svg = d3.select(svgRef.current);
@@ -52,15 +52,24 @@ function LineChart({
       .y(d => yScale(yAccessor(d)))
       .curve(d3.curveMonotoneX);
 
+    // Add clipPath
+    svg.append("defs")
+      .append("clipPath")
+      .attr("id", "clip")
+      .append("rect")
+      .attr("width", innerWidth)
+      .attr("height", innerHeight);
+
     const g = svg.append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+      .attr("transform", `translate(${margin.left},${margin.top})`)
+      .attr("clip-path", "url(#clip)");
 
     // Add gridlines
     g.append("g")
       .attr("class", "grid")
       .attr("transform", `translate(0,${innerHeight})`)
       .call(d3.axisBottom(xScale)
-        .ticks(5)
+        .ticks(10) // Decreased number of ticks
         .tickSize(-innerHeight)
         .tickFormat(""))
       .style("stroke-opacity", 0.1);
@@ -68,7 +77,7 @@ function LineChart({
     g.append("g")
       .attr("class", "grid")
       .call(d3.axisLeft(yScale)
-        .ticks(5)
+        .ticks(5) // Decreased number of ticks
         .tickSize(-innerWidth)
         .tickFormat(""))
       .style("stroke-opacity", 0.1);
@@ -81,13 +90,20 @@ function LineChart({
     g.append("g")
       .call(d3.axisLeft(yScale));
 
-    // Add line path
-    g.append("path")
+    // Add line path with transform transition
+    const path = g.append("path")
       .datum(filtered)
       .attr("fill", "none")
       .attr("stroke", color)
       .attr("stroke-width", 2)
-      .attr("d", line);
+      .attr("d", line)
+      .attr("transform", "translate(0,0)");
+
+    // Modify transition to animate transform
+    path.transition()
+      .duration(timeWindow)
+      .ease(d3.easeLinear)
+      .attr("transform", `translate(${xScale(-1)},0)`);
 
     // Add title
     if (title) {

@@ -16,7 +16,7 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
   const targetRotationRef = useRef(new THREE.Euler(0, 0, 0, 'XYZ'));
 
   const rocketRef = useRef(null);
-  const orientationStickRef = useRef(null);
+  const groupRef = useRef(null);
 
   // Lerp factor
   const lerpFactor = 0.1;
@@ -68,16 +68,10 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
     const materials = new Set();
     const geometries = new Set();
 
-    // Orientation "stick" for debugging
-    const stickGeometry = new THREE.BoxGeometry(0.1, 5, 0.1);
-    const stickMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    geometries.add(stickGeometry);
-    materials.add(stickMaterial);
-    const orientationStick = new THREE.Mesh(stickGeometry, stickMaterial);
-    orientationStick.rotation.order = 'XYZ';
-    orientationStick.position.set(0, 0, 0);
-    orientationStickRef.current = orientationStick;
-    scene.add(orientationStick);
+    // Create a group and add to scene
+    const group = new THREE.Group();
+    groupRef.current = group;
+    scene.add(group);
 
     // Load rocket
     const loader = new GLTFLoader();
@@ -102,7 +96,7 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
           }
         });
 
-        scene.add(rocket);
+        group.add(rocket);
         rocketRef.current = rocket;
       },
       undefined,
@@ -115,22 +109,14 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
       
-      // Lerp the rocket’s rotation to the target
-      if (!document.hidden && rocketRef.current) {
-        currentRotationRef.current.x +=
-          (targetRotationRef.current.x - currentRotationRef.current.x) * lerpFactor;
-        currentRotationRef.current.y +=
-          (targetRotationRef.current.y - currentRotationRef.current.y) * lerpFactor;
-        currentRotationRef.current.z +=
-          (targetRotationRef.current.z - currentRotationRef.current.z) * lerpFactor;
-
-        rocketRef.current.rotation.x = currentRotationRef.current.x;
-        rocketRef.current.rotation.y = currentRotationRef.current.y;
-        rocketRef.current.rotation.z = currentRotationRef.current.z;
-
-        orientationStickRef.current.rotation.x = currentRotationRef.current.x;
-        orientationStickRef.current.rotation.y = currentRotationRef.current.y;
-        orientationStickRef.current.rotation.z = currentRotationRef.current.z;
+      // Lerp the group's rotation to the target
+      if (!document.hidden && groupRef.current) {
+        groupRef.current.rotation.x +=
+          (targetRotationRef.current.x - groupRef.current.rotation.x) * lerpFactor;
+        groupRef.current.rotation.y +=
+          (targetRotationRef.current.y - groupRef.current.rotation.y) * lerpFactor;
+        groupRef.current.rotation.z +=
+          (targetRotationRef.current.z - groupRef.current.rotation.z) * lerpFactor;
       }
 
       controls.update();
