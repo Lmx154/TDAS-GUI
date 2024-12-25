@@ -199,6 +199,11 @@ function TestPage() {
         yAccessor={d => d.bme_temp}
         color="red"
         title="BME Temperature"
+        width={800}
+        height={300}
+        margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
+        animationDuration={2000}
+        timeWindow={30000}
       />
       <LineChart
         data={telemetryData}
@@ -206,6 +211,11 @@ function TestPage() {
         yAccessor={d => d.imu_temp}
         color="blue"
         title="IMU Temperature"
+        width={800}
+        height={300}
+        margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
+        animationDuration={2000}
+        timeWindow={30000}
       />
       <LineChart
         data={telemetryData}
@@ -213,6 +223,11 @@ function TestPage() {
         yAccessor={d => d.bme_pressure}
         color="green"
         title="BME Pressure"
+        width={800}
+        height={300}
+        margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
+        animationDuration={2000}
+        timeWindow={30000}
       />
       <LineChart
         data={telemetryData}
@@ -220,6 +235,11 @@ function TestPage() {
         yAccessor={d => d.gps_speed}
         color="purple"
         title="GPS Speed"
+        width={800}
+        height={300}
+        margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
+        animationDuration={2000}
+        timeWindow={30000}
       />
     </div>
   );

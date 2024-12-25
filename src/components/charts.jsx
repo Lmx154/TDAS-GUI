@@ -9,115 +9,87 @@ function LineChart({
   color = "steelblue",
   width = 600,
   height = 400,
-  margin = { top: 50, right: 30, bottom: 30, left: 50 }, // Adjusted left margin for possible negative labels
-  title = "", // Default empty title
+  margin = { top: 50, right: 30, bottom: 30, left: 50 },
+  title = "",
+  timeWindow = 30000, // 30 seconds default
 }) {
   const svgRef = useRef(null);
 
   useEffect(() => {
-    // Select the SVG element
+    if (!data || data.length === 0) return;
+
+    // Filter data based on timeWindow
+    const now = new Date();
+    const filtered = data.filter(d => {
+      const timestamp = xAccessor(d);
+      return (now - timestamp) <= timeWindow;
+    });
+
+    if (filtered.length === 0) return;
+
+    // Clear previous content
     const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove(); // Clear previous content
+    svg.selectAll("*").remove();
 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    // Compute y-axis domain based on data
-    let yMin = d3.min(data, yAccessor);
-    let yMax = d3.max(data, yAccessor);
-
-    // Handle cases where data is empty or yMin/yMax are undefined
-    if (yMin === undefined || yMax === undefined) {
-      yMin = 0;
-      yMax = 10;
-    }
-
-    // Round yMin down and yMax up to the nearest multiple of 10
-    let yDomainMin = Math.floor(yMin / 10) * 10;
-    let yDomainMax = Math.ceil(yMax / 10) * 10;
-
-    // Ensure that yDomainMin and yDomainMax are not the same
-    if (yDomainMin === yDomainMax) {
-      yDomainMax = yDomainMin + 10;
-      if (yMin < 0) {
-        yDomainMin = yDomainMin - 10;
-      }
-    }
-
     // Create scales
     const xScale = d3.scaleTime()
-      .domain(d3.extent(data, xAccessor))
+      .domain(d3.extent(filtered, xAccessor))
       .range([0, innerWidth]);
 
     const yScale = d3.scaleLinear()
-      .domain([yDomainMin, yDomainMax])
-      .range([innerHeight, 0])
-      .nice(); // Ensures the domain is rounded nicely
+      .domain([
+        d3.min(filtered, yAccessor) * 0.95,
+        d3.max(filtered, yAccessor) * 1.05
+      ])
+      .range([innerHeight, 0]);
 
-    // Create axes
-    const xAxis = d3.axisBottom(xScale).ticks(6);
-    const yAxis = d3.axisLeft(yScale).ticks(5);
-
-    // Create gridlines
-    const xGrid = d3.axisBottom(xScale)
-      .ticks(6)
-      .tickSize(-innerHeight)
-      .tickFormat("");
-
-    const yGrid = d3.axisLeft(yScale)
-      .ticks(5)
-      .tickSize(-innerWidth)
-      .tickFormat("");
-
-    // Define the line generator
+    // Create line generator
     const line = d3.line()
       .x(d => xScale(xAccessor(d)))
       .y(d => yScale(yAccessor(d)))
       .curve(d3.curveMonotoneX);
 
-    // Append a group element translated by the margins
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Add X gridlines
+    // Add gridlines
     g.append("g")
       .attr("class", "grid")
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(xGrid)
-      .selectAll("line")
-      .attr("stroke", "#e0e0e0") // Light gray color
-      .attr("stroke-opacity", 0.7);
+      .call(d3.axisBottom(xScale)
+        .ticks(5)
+        .tickSize(-innerHeight)
+        .tickFormat(""))
+      .style("stroke-opacity", 0.1);
 
-    // Add Y gridlines
     g.append("g")
       .attr("class", "grid")
-      .call(yGrid)
-      .selectAll("line")
-      .attr("stroke", "#e0e0e0") // Light gray color
-      .attr("stroke-opacity", 0.7);
+      .call(d3.axisLeft(yScale)
+        .ticks(5)
+        .tickSize(-innerWidth)
+        .tickFormat(""))
+      .style("stroke-opacity", 0.1);
 
-    // Add X axis
+    // Add axes
     g.append("g")
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(xAxis)
-      .selectAll("text")
-      .attr("fill", "#333"); // Darker text for readability
+      .call(d3.axisBottom(xScale).ticks(5));
 
-    // Add Y axis
     g.append("g")
-      .call(yAxis)
-      .selectAll("text")
-      .attr("fill", "#333"); // Darker text for readability
+      .call(d3.axisLeft(yScale));
 
-    // Add the line path
+    // Add line path
     g.append("path")
-      .datum(data)
+      .datum(filtered)
       .attr("fill", "none")
       .attr("stroke", color)
-      .attr("stroke-width", 1.5)
+      .attr("stroke-width", 2)
       .attr("d", line);
 
-    // Add Title
+    // Add title
     if (title) {
       svg.append("text")
         .attr("x", width / 2)
@@ -128,9 +100,22 @@ function LineChart({
         .text(title);
     }
 
-  }, [data, xAccessor, yAccessor, color, width, height, margin, title]);
+  }, [data, xAccessor, yAccessor, color, width, height, margin, title, timeWindow]);
 
-  return <svg ref={svgRef} width={width} height={height}></svg>;
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
+      <svg 
+        ref={svgRef} 
+        width={width} 
+        height={height}
+        style={{ 
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          borderRadius: '8px',
+          padding: '10px'
+        }}
+      />
+    </div>
+  );
 }
 
 // PropTypes for better type checking
@@ -148,6 +133,7 @@ LineChart.propTypes = {
     left: PropTypes.number,
   }),
   title: PropTypes.string,
+  timeWindow: PropTypes.number, // Time window in milliseconds
 };
 
 export default LineChart;

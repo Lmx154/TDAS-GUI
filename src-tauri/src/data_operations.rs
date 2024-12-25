@@ -208,15 +208,27 @@ impl TelemetryBuffer {
 // }
 //----------------------------------------------------------------------------------------------------------------------------
 
+fn parse_timestamp(timestamp: &str) -> Option<String> {
+    // Expected format: "2024/12/22 (Sunday) 15:34:09"
+    let parts: Vec<&str> = timestamp.split(" ").collect();
+    if parts.len() < 3 {
+        return None;
+    }
+
+    let date = parts[0].replace("/", "-"); // Convert slashes to dashes
+    let time = parts[2];
+    
+    Some(format!("{}T{}Z", date, time)) // ISO 8601 format
+}
 
 fn parse_telemetry(message: &str, rssi: i32, snr: f32) -> Option<TelemetryData> {
-    // Extract timestamp and data parts
     let parts: Vec<&str> = message.split("] ").collect();
     if parts.len() != 2 {
         return None;
     }
 
-    let timestamp = parts[0].trim_start_matches('[').to_string();
+    let raw_timestamp = parts[0].trim_start_matches('[');
+    let timestamp = parse_timestamp(raw_timestamp)?;
     let data_str = parts[1];
 
     // Split the data into individual values
