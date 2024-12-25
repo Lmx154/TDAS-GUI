@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import TelemetryDisplay from "../components/telemetry_panel";
 import RocketModel from "../components/3drocket";
-import LineChart from "../components/chart";
+import LineChart from "../components/charts";
 
 function TestPage() {
   const [portName, setPortName] = useState("");
@@ -198,24 +198,28 @@ function TestPage() {
         xAccessor={d => new Date(d.timestamp)}
         yAccessor={d => d.bme_temp}
         color="red"
+        title="BME Temperature"
       />
       <LineChart
         data={telemetryData}
         xAccessor={d => new Date(d.timestamp)}
         yAccessor={d => d.imu_temp}
         color="blue"
+        title="IMU Temperature"
       />
       <LineChart
         data={telemetryData}
         xAccessor={d => new Date(d.timestamp)}
         yAccessor={d => d.bme_pressure}
         color="green"
+        title="BME Pressure"
       />
       <LineChart
         data={telemetryData}
         xAccessor={d => new Date(d.timestamp)}
         yAccessor={d => d.gps_speed}
         color="purple"
+        title="GPS Speed"
       />
     </div>
   );

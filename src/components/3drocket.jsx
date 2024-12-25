@@ -59,7 +59,7 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
     camera.add(cameraLight);
     scene.add(camera);
 
-    // Orientation "stick"
+    // Orientation "stick" for debugging
     const stickGeometry = new THREE.BoxGeometry(0.1, 5, 0.1);
     const stickMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const orientationStick = new THREE.Mesh(stickGeometry, stickMaterial);
