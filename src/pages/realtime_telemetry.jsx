@@ -13,7 +13,7 @@ function TestPage() {
   const [textFilePath, setTextFilePath] = useState("");
   const [fileList, setFileList] = useState([]);
   const [portList, setPortList] = useState([]);
-  const [isDarkMode, setIsDarkMode] = useState(false); // Change text to black or white
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [telemetry, setTelemetry] = useState({
     timestamp: "",
     accel_x: 0,
@@ -37,18 +37,20 @@ function TestPage() {
     rssi: 0,
     snr: 0,
   });
-
   const [telemetryData, setTelemetryData] = useState([]);
 
-  useEffect(() => {
-    async function fetchFiles() {
-      try {
-        const files = await invoke("list_files");
-        setFileList(files);
-      } catch (error) {
-        console.error("Error fetching files:", error);
-      }
+  // Define fetchFiles function
+  async function fetchFiles() {
+    try {
+      const files = await invoke("list_files");
+      setFileList(files);
+    } catch (error) {
+      console.error("Error fetching files:", error);
     }
+  }
+
+  useEffect(() => {
+    // Call fetchFiles
     fetchFiles();
 
     async function fetchPorts() {
@@ -64,26 +66,40 @@ function TestPage() {
     // Listen for telemetry updates
     const unlisten = listen("telemetry-update", (event) => {
       setTelemetry(event.payload);
-      setTelemetryData(prevData => [...prevData, event.payload]);
+
+      setTelemetryData((prevData) => {
+        const newData = [
+          ...prevData,
+          {
+            timestamp: event.payload.timestamp,
+            bme_temp: Number(event.payload.bme_temp),
+            imu_temp: Number(event.payload.imu_temp),
+            bme_pressure: Number(event.payload.bme_pressure),
+            gps_speed: Number(event.payload.gps_speed),
+          },
+        ];
+
+        // Limit to last 30 seconds of data
+        return newData.filter(
+          (d) =>
+            new Date(newData[newData.length - 1].timestamp) -
+              new Date(d.timestamp) <=
+            30000
+        );
+      });
     });
 
     return () => {
-      unlisten.then(f => f()); // Cleanup listener when component unmounts
+      unlisten.then((f) => f()); // Cleanup listener when component unmounts
     };
   }, []);
 
-  async function fetchFiles() {
-    try {
-      const files = await invoke("list_files");
-      setFileList(files);
-    } catch (error) {
-      console.error("Error fetching files:", error);
-    }
-  }
-
   async function openSerialPort() {
     try {
-      const message = await invoke("open_serial", { portName, baudRate: parseInt(baudRate) });
+      const message = await invoke("open_serial", {
+        portName,
+        baudRate: parseInt(baudRate),
+      });
       setConnectionMsg(message);
     } catch (error) {
       setConnectionMsg(`Error: ${error}`);
@@ -118,7 +134,7 @@ function TestPage() {
   }
 
   return (
-    <div className={`p-4 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+    <div className={`p-4 ${isDarkMode ? "text-white" : "text-black"}`}>
       <h1 className="text-2xl font-bold text-center mb-4">Test Page</h1>
       <div className="p-4 border rounded bg-white/30 backdrop-blur-md mb-4">
         <form
@@ -145,7 +161,7 @@ function TestPage() {
             placeholder="Baud Rate"
             value={baudRate}
             onChange={(e) => setBaudRate(e.target.value)}
-            className="border rounded p-2 mr-2 text-black w-24" // Adjusted width
+            className="border rounded p-2 mr-2 text-black w-24"
           />
           <button type="submit" className="bg-blue-500 text-white p-2 rounded">
             Open Serial Port
@@ -169,7 +185,7 @@ function TestPage() {
           <select
             value={textFilePath}
             onChange={(e) => setTextFilePath(e.target.value)}
-            onClick={fetchFiles} // Fetch files every time the dropdown is clicked
+            onClick={fetchFiles}
             className="border rounded p-2 text-black"
           >
             <option value="">Select file</option>
@@ -191,57 +207,52 @@ function TestPage() {
       </div>
 
       <TelemetryDisplay telemetry={telemetry} />
-      <RocketModel gyro_x={telemetry.gyro_x} gyro_y={telemetry.gyro_y} gyro_z={telemetry.gyro_z} />
-
+      <RocketModel
+        gyro_x={telemetry.gyro_x}
+        gyro_y={telemetry.gyro_y}
+        gyro_z={telemetry.gyro_z}
+      />
       <LineChart
         data={telemetryData}
-        xAccessor={d => new Date(d.timestamp)}
-        yAccessor={d => d.bme_temp}
+        xAccessor={(d) => new Date(d.timestamp)}
+        yAccessor={(d) => d.bme_temp}
         color="red"
         title="BME Temperature"
         width={800}
         height={300}
         margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
-        animationDuration={2000}
-        timeWindow={30000}
       />
       <LineChart
         data={telemetryData}
-        xAccessor={d => new Date(d.timestamp)}
-        yAccessor={d => d.imu_temp}
+        xAccessor={(d) => new Date(d.timestamp)}
+        yAccessor={(d) => d.imu_temp}
         color="blue"
         title="IMU Temperature"
         width={800}
         height={300}
         margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
-        animationDuration={2000}
-        timeWindow={30000}
       />
       <LineChart
         data={telemetryData}
-        xAccessor={d => new Date(d.timestamp)}
-        yAccessor={d => d.bme_pressure}
+        xAccessor={(d) => new Date(d.timestamp)}
+        yAccessor={(d) => d.bme_pressure}
         color="green"
         title="BME Pressure"
         width={800}
         height={300}
         margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
-        animationDuration={2000}
-        timeWindow={30000}
       />
       <LineChart
         data={telemetryData}
-        xAccessor={d => new Date(d.timestamp)}
-        yAccessor={d => d.gps_speed}
+        xAccessor={(d) => new Date(d.timestamp)}
+        yAccessor={(d) => d.gps_speed}
         color="purple"
         title="GPS Speed"
         width={800}
         height={300}
         margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
-        animationDuration={2000}
-        timeWindow={30000}
       />
-    </div>
+      </div>
   );
 }
 

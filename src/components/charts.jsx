@@ -7,134 +7,102 @@ function LineChart({
   xAccessor,
   yAccessor,
   color = "steelblue",
-  width = 600,
-  height = 400,
-  margin = { top: 50, right: 30, bottom: 30, left: 50 },
+  width = 800,
+  height = 300,
+  margin = { top: 20, right: 20, bottom: 30, left: 50 },
   title = "",
-  timeWindow = 20000, // Increased to 20 seconds
 }) {
   const svgRef = useRef(null);
+  const pathRef = useRef(null);
+  const xAxisRef = useRef(null);
+  const yAxisRef = useRef(null);
 
   useEffect(() => {
     if (!data || data.length === 0) return;
 
-    // Filter data based on timeWindow
-    const now = new Date();
-    const filtered = data.filter(d => {
-      const timestamp = xAccessor(d);
-      return (now - timestamp) <= timeWindow;
-    });
-
-    console.log('Filtered data length:', filtered.length); // Added log
-
-    // Clear previous content
     const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove();
+    const path = d3.select(pathRef.current);
+    const xAxisGroup = d3.select(xAxisRef.current);
+    const yAxisGroup = d3.select(yAxisRef.current);
 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
     // Create scales
-    const xScale = d3.scaleTime()
-      .domain(d3.extent(filtered, xAccessor))
+    const xScale = d3
+      .scaleTime()
+      .domain(d3.extent(data, xAccessor))
       .range([0, innerWidth]);
 
-    const yScale = d3.scaleLinear()
+    const yScale = d3
+      .scaleLinear()
       .domain([
-        d3.min(filtered, yAccessor) * 0.95,
-        d3.max(filtered, yAccessor) * 1.05
+        d3.min(data, yAccessor) * 0.95,
+        d3.max(data, yAccessor) * 1.05,
       ])
       .range([innerHeight, 0]);
 
-    // Create line generator
-    const line = d3.line()
-      .x(d => xScale(xAccessor(d)))
-      .y(d => yScale(yAccessor(d)))
-      .curve(d3.curveMonotoneX);
+    // Update the axes
+    const xAxis = d3.axisBottom(xScale);
+    const yAxis = d3.axisLeft(yScale);
 
-    // Add clipPath
-    svg.append("defs")
-      .append("clipPath")
-      .attr("id", "clip")
-      .append("rect")
-      .attr("width", innerWidth)
-      .attr("height", innerHeight);
-
-    const g = svg.append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
-      .attr("clip-path", "url(#clip)");
-
-    // Add gridlines
-    g.append("g")
-      .attr("class", "grid")
+    xAxisGroup
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(xScale)
-        .ticks(10) // Decreased number of ticks
-        .tickSize(-innerHeight)
-        .tickFormat(""))
-      .style("stroke-opacity", 0.1);
+      .transition()
+      .call(xAxis);
 
-    g.append("g")
-      .attr("class", "grid")
-      .call(d3.axisLeft(yScale)
-        .ticks(5) // Decreased number of ticks
-        .tickSize(-innerWidth)
-        .tickFormat(""))
-      .style("stroke-opacity", 0.1);
+    yAxisGroup.transition().call(yAxis);
 
-    // Add axes
-    g.append("g")
-      .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(xScale).ticks(5));
+    // Create the line generator
+    const line = d3
+      .line()
+      .x((d) => xScale(xAccessor(d)))
+      .y((d) => yScale(yAccessor(d)))
+      .curve(d3.curveLinear);
 
-    g.append("g")
-      .call(d3.axisLeft(yScale));
-
-    // Add line path with transform transition
-    const path = g.append("path")
-      .datum(filtered)
-      .attr("fill", "none")
-      .attr("stroke", color)
-      .attr("stroke-width", 2)
-      .attr("d", line)
-      .attr("transform", "translate(0,0)");
-
-    // Modify transition to animate transform
-    path.transition()
-      .duration(timeWindow)
+    // Update the path with transition
+    path
+      .datum(data)
+      .transition()
       .ease(d3.easeLinear)
-      .attr("transform", `translate(${xScale(-1)},0)`);
-
-    // Add title
-    if (title) {
-      svg.append("text")
-        .attr("x", width / 2)
-        .attr("y", margin.top / 2)
-        .attr("text-anchor", "middle")
-        .attr("font-size", "16px")
-        .attr("font-weight", "bold")
-        .text(title);
-    }
-
-  }, [data, xAccessor, yAccessor, color, width, height, margin, title, timeWindow]);
+      .duration(1000)
+      .attr("d", line);
+  }, [data, xAccessor, yAccessor, color, width, height, margin]);
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
-      <svg 
-        ref={svgRef} 
-        width={width} 
-        height={height}
-        style={{ 
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '8px',
-          padding: '10px'
-        }}
-      />
-    </div>
+    <svg
+      ref={svgRef}
+      width={width}
+      height={height}
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.1)",
+        borderRadius: "8px",
+        padding: "10px",
+      }}
+    >
+      {title && (
+        <text
+          x={width / 2}
+          y={margin.top / 2}
+          textAnchor="middle"
+          fontSize="16px"
+          fontWeight="bold"
+        >
+          {title}
+        </text>
+      )}
+      <g
+        transform={`translate(${margin.left},${margin.top})`}
+        ref={svgRef}
+      >
+        <g ref={xAxisRef} />
+        <g ref={yAxisRef} />
+        <path ref={pathRef} fill="none" stroke={color} strokeWidth={2} />
+      </g>
+    </svg>
   );
 }
 
-// PropTypes for better type checking
 LineChart.propTypes = {
   data: PropTypes.arrayOf(PropTypes.object).isRequired,
   xAccessor: PropTypes.func.isRequired,
@@ -149,7 +117,6 @@ LineChart.propTypes = {
     left: PropTypes.number,
   }),
   title: PropTypes.string,
-  timeWindow: PropTypes.number, // Time window in milliseconds
 };
 
 export default LineChart;
