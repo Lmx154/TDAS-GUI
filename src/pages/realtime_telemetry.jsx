@@ -38,6 +38,14 @@ function TestPage() {
     snr: 0,
   });
   const [telemetryData, setTelemetryData] = useState([]);
+  const [sensorArrays, setSensorArrays] = useState({
+    Accel_xArray: [],
+    Accel_yArray: [],
+    Accel_ZArray: [],
+    gxArray: [],
+    gyArray: [],
+    gzArray: []
+  });
 
   // Define fetchFiles function
   async function fetchFiles() {
@@ -66,6 +74,16 @@ function TestPage() {
     // Listen for telemetry updates
     const unlisten = listen("telemetry-update", (event) => {
       setTelemetry(event.payload);
+
+      // Update sensor arrays
+      setSensorArrays(prev => ({
+        Accel_xArray: [...prev.Accel_xArray, event.payload.accel_x].slice(-100),
+        Accel_yArray: [...prev.Accel_yArray, event.payload.accel_y].slice(-100),
+        Accel_ZArray: [...prev.Accel_ZArray, event.payload.accel_z].slice(-100),
+        gxArray: [...prev.gxArray, event.payload.gyro_x].slice(-100),
+        gyArray: [...prev.gyArray, event.payload.gyro_y].slice(-100),
+        gzArray: [...prev.gzArray, event.payload.gyro_z].slice(-100)
+      }));
 
       setTelemetryData((prevData) => {
         const newData = [
@@ -208,9 +226,12 @@ function TestPage() {
 
       <TelemetryDisplay telemetry={telemetry} />
       <RocketModel
-        gyro_x={telemetry.gyro_x}
-        gyro_y={telemetry.gyro_y}
-        gyro_z={telemetry.gyro_z}
+        Accel_xArray={sensorArrays.Accel_xArray}
+        Accel_yArray={sensorArrays.Accel_yArray}
+        Accel_ZArray={sensorArrays.Accel_ZArray}
+        gxArray={sensorArrays.gxArray}
+        gyArray={sensorArrays.gyArray}
+        gzArray={sensorArrays.gzArray}
       />
       <LineChart
         data={telemetryData}
@@ -220,7 +241,7 @@ function TestPage() {
         title="BME Temperature"
         width={800}
         height={300}
-        margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
+        margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
       />
       <LineChart
         data={telemetryData}
@@ -230,7 +251,7 @@ function TestPage() {
         title="IMU Temperature"
         width={800}
         height={300}
-        margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
+        margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
       />
       <LineChart
         data={telemetryData}
@@ -240,7 +261,7 @@ function TestPage() {
         title="BME Pressure"
         width={800}
         height={300}
-        margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
+        margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
       />
       <LineChart
         data={telemetryData}
@@ -250,7 +271,7 @@ function TestPage() {
         title="GPS Speed"
         width={800}
         height={300}
-        margin={{ top: 50, right: 30, bottom: 30, left: 50 }}
+        margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
       />
       </div>
   );

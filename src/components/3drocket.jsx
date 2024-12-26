@@ -1,189 +1,193 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-function RocketModel({ gyro_x, gyro_y, gyro_z }) {
+function RocketModel({ 
+  Accel_ZArray,
+  Accel_xArray,
+  Accel_yArray,
+  gxArray,
+  gyArray,
+  gzArray 
+}) {
+  const [fps, setFps] = useState(0);
+  const [calculatedOrientation, setCalculatedOrientation] = useState({
+    pitch: 0,
+    roll: 0,
+    yaw: 0
+  });
   const mountRef = useRef(null);
-  const sceneRef = useRef(null);
-  const rendererRef = useRef(null);
-  const animationFrameRef = useRef(null);
-
-  // Current actual rotation in the scene
-  const currentRotationRef = useRef(new THREE.Euler(0, 0, 0, 'XYZ'));
-
-  // Target rotation we want to lerp toward
-  const targetRotationRef = useRef(new THREE.Euler(0, 0, 0, 'XYZ'));
-
-  const rocketRef = useRef(null);
-  const groupRef = useRef(null);
-
-  // Lerp factor
+  const targetRotation = useRef(new THREE.Euler(0, 0, 0, 'XYZ'));
   const lerpFactor = 0.1;
 
-  // ------------------------------
-  // 1) Create Scene ONCE
-  // ------------------------------
+  // Calculate orientation from sensor data
+  useEffect(() => {
+    if (
+      Accel_ZArray.length &&
+      Accel_xArray.length &&
+      Accel_yArray.length &&
+      gxArray.length &&
+      gyArray.length &&
+      gzArray.length
+    ) {
+      const ax = Accel_xArray.at(-1);
+      const ay = Accel_yArray.at(-1);
+      const az = Accel_ZArray.at(-1);
+      const gx = gxArray.at(-1);
+      const gy = gyArray.at(-1);
+      const gz = gzArray.at(-1);
+
+      const pitch = Math.atan2(ax, Math.sqrt(ay * ay + az * az));
+      const roll = Math.atan2(ay, Math.sqrt(ax * ax + az * az));
+      const yaw = gz; // Simplified yaw calculation
+
+      setCalculatedOrientation({ pitch, roll, yaw });
+      targetRotation.current.set(pitch, roll, yaw);
+    }
+  }, [Accel_ZArray, Accel_xArray, Accel_yArray, gxArray, gyArray, gzArray]);
+
   useEffect(() => {
     const mount = mountRef.current;
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
+    if (!mount) return;
 
-    // Camera
+    // Initialize Scene
+    const scene = new THREE.Scene();
+
+    // Setup Camera
     const camera = new THREE.PerspectiveCamera(
       75,
       mount.clientWidth / mount.clientHeight,
       0.1,
       1000
     );
-    camera.position.z = 10;
+    camera.position.set(0, 0, 10);
 
-    // Renderer
+    // Setup Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    rendererRef.current = renderer;
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setClearColor(0x000000, 0);
-    renderer.physicallyCorrectLights = true;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.5;
+    Object.assign(renderer, {
+      physicallyCorrectLights: true,
+      toneMapping: THREE.ACESFilmicToneMapping,
+      toneMappingExposure: 1.5,
+      outputEncoding: THREE.sRGBEncoding,
+      shadowMap: { enabled: true, type: THREE.PCFSoftShadowMap },
+    });
     mount.appendChild(renderer.domElement);
 
-    // OrbitControls
+    // Setup Controls
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.minDistance = 5;
-    controls.maxDistance = 15;
+    Object.assign(controls, {
+      enableDamping: true,
+      dampingFactor: 0.05,
+      minDistance: 5,
+      maxDistance: 15,
+    });
 
-    // Light on camera
-    const cameraLight = new THREE.SpotLight(0xffffff, 200);
-    cameraLight.position.set(0, 0, 1);
-    cameraLight.angle = Math.PI / 2;
-    cameraLight.penumbra = 1;
-    cameraLight.decay = 0;
-    camera.add(cameraLight);
+    // Add Lighting
+    const light = new THREE.SpotLight(0xffffff, 200, 0, Math.PI / 2, 1, 0);
+    light.position.set(0, 0, 1);
+    camera.add(light);
     scene.add(camera);
 
-    // Store materials and geometries for proper cleanup
-    const materials = new Set();
-    const geometries = new Set();
-
-    // Create a group and add to scene
+    // Load Rocket Model
     const group = new THREE.Group();
-    groupRef.current = group;
     scene.add(group);
-
-    // Load rocket
     const loader = new GLTFLoader();
     loader.load(
       '/rocket_model.gltf',
       (gltf) => {
         const rocket = gltf.scene;
         rocket.scale.set(0.5, 0.5, 0.5);
-        rocket.rotation.order = 'XYZ';
         rocket.position.set(0, -2.7, 0);
-
-        rocket.traverse((node) => {
+        rocket.traverse(node => {
           if (node.isMesh) {
-            if (node.geometry) geometries.add(node.geometry);
-            const material = new THREE.MeshStandardMaterial({
+            node.material = new THREE.MeshStandardMaterial({
               color: 0xffffff,
               metalness: 1.0,
               roughness: 0.1,
             });
-            materials.add(material);
-            node.material = material;
           }
         });
-
         group.add(rocket);
-        rocketRef.current = rocket;
       },
       undefined,
-      (error) => {
-        console.error(error);
-      }
+      console.error
     );
 
-    // Animation loop
+    // FPS Tracking
+    let frameCount = 0;
+    let lastTime = performance.now();
+
+    // Animation Loop
     const animate = () => {
-      animationFrameRef.current = requestAnimationFrame(animate);
-      
-      // Lerp the group's rotation to the target
-      if (!document.hidden && groupRef.current) {
-        groupRef.current.rotation.x +=
-          (targetRotationRef.current.x - groupRef.current.rotation.x) * lerpFactor;
-        groupRef.current.rotation.y +=
-          (targetRotationRef.current.y - groupRef.current.rotation.y) * lerpFactor;
-        groupRef.current.rotation.z +=
-          (targetRotationRef.current.z - groupRef.current.rotation.z) * lerpFactor;
+      frameCount++;
+      const currentTime = performance.now();
+      if (currentTime - lastTime >= 1000) {
+        setFps(frameCount);
+        frameCount = 0;
+        lastTime = currentTime;
       }
+
+      // Smooth Rotation using calculated orientation
+      ['x', 'y', 'z'].forEach(axis => {
+        group.rotation[axis] += (targetRotation.current[axis] - group.rotation[axis]) * lerpFactor;
+      });
 
       controls.update();
       renderer.render(scene, camera);
+      requestAnimationFrame(animate);
     };
     animate();
 
-    // Handle resize
+    // Handle Window Resize
     const handleResize = () => {
-      camera.aspect = mount.clientWidth / mount.clientHeight;
+      const { clientWidth, clientHeight } = mount;
+      camera.aspect = clientWidth / clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(mount.clientWidth, mount.clientHeight);
+      renderer.setSize(clientWidth, clientHeight);
     };
     window.addEventListener('resize', handleResize);
 
-    // Cleanup
+    // Cleanup on Unmount
     return () => {
       window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameRef.current);
-      
-      // Cleanup materials
-      materials.forEach(material => {
-        material.dispose();
-      });
-
-      // Cleanup geometries
-      geometries.forEach(geometry => {
-        geometry.dispose();
-      });
-
-      // Cleanup scene
-      scene.traverse(object => {
-        if (object.geometry) {
-          object.geometry.dispose();
-        }
-        if (object.material) {
-          if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-      });
-
       controls.dispose();
       renderer.dispose();
-      if (renderer.domElement && mount.contains(renderer.domElement)) {
-        mount.removeChild(renderer.domElement);
-      }
+      mount.removeChild(renderer.domElement);
+      scene.traverse(object => {
+        if (object.isMesh) {
+          object.geometry.dispose();
+          Array.isArray(object.material)
+            ? object.material.forEach(mat => mat.dispose())
+            : object.material.dispose();
+        }
+      });
     };
   }, []);
 
-  // ------------------------------
-  // 2) Update target rotation 
-  // ------------------------------
-  useEffect(() => {
-    // If your data is absolute angles, *and* you know
-    // that (0,0,0) means "invalid" or "don't update",
-    // you can just ignore it:
-    if (!(gyro_x === 0 && gyro_y === 0 && gyro_z === 0)) {
-      targetRotationRef.current.x = gyro_x;
-      targetRotationRef.current.y = gyro_y;
-      targetRotationRef.current.z = gyro_z;
-    }
-  }, [gyro_x, gyro_y, gyro_z]);
-
-  return <div ref={mountRef} style={{ width: "100%", height: "400px" }} />;
+  return (
+    <div style={{ position: 'relative' }}>
+      <div
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          background: 'rgba(0, 0, 0, 0.5)',
+          color: '#00ff00',
+          padding: '5px 10px',
+          borderRadius: '3px',
+          fontFamily: 'monospace',
+          zIndex: 1000,
+          textShadow: '0 0 2px #00ff00',
+        }}
+      >
+        {fps} FPS
+      </div>
+      <div ref={mountRef} style={{ width: "100%", height: "400px" }} />
+    </div>
+  );
 }
 
 export default RocketModel;
