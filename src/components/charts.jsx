@@ -2,6 +2,19 @@ import React, { useRef, useEffect } from "react";
 import * as d3 from "d3";
 import PropTypes from "prop-types";
 
+// Add smoothing function
+const smoothData = (data, xAccessor, yAccessor, windowSize = 5) => {
+  return data.map((point, index) => {
+    const start = Math.max(0, index - windowSize + 1);
+    const window = data.slice(start, index + 1);
+    const smoothedY = d3.mean(window, yAccessor);
+    return {
+      ...point,
+      smoothedValue: smoothedY
+    };
+  });
+};
+
 function LineChart({
   data,
   xAccessor,
@@ -20,6 +33,10 @@ function LineChart({
   useEffect(() => {
     if (!data || data.length === 0) return;
 
+    // Apply smoothing and limit data points
+    const smoothedData = smoothData(data, xAccessor, yAccessor);
+    const limitedData = smoothedData.slice(-50); // Keep only last 50 points
+
     const svg = d3.select(svgRef.current);
     const path = d3.select(pathRef.current);
     const xAxisGroup = d3.select(xAxisRef.current);
@@ -28,17 +45,17 @@ function LineChart({
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    // Create scales
+    // Update scales to use smoothed values
     const xScale = d3
       .scaleTime()
-      .domain(d3.extent(data, xAccessor))
+      .domain(d3.extent(limitedData, xAccessor))
       .range([0, innerWidth]);
 
     const yScale = d3
       .scaleLinear()
       .domain([
-        d3.min(data, yAccessor) * 0.95,
-        d3.max(data, yAccessor) * 1.05,
+        d3.min(limitedData, d => d.smoothedValue) * 0.95,
+        d3.max(limitedData, d => d.smoothedValue) * 1.05,
       ])
       .range([innerHeight, 0]);
 
@@ -53,16 +70,16 @@ function LineChart({
 
     yAxisGroup.transition().call(yAxis);
 
-    // Create the line generator
+    // Update line generator to use smoothed values
     const line = d3
       .line()
-      .x((d) => xScale(xAccessor(d)))
-      .y((d) => yScale(yAccessor(d)))
-      .curve(d3.curveLinear);
+      .x(d => xScale(xAccessor(d)))
+      .y(d => yScale(d.smoothedValue))
+      .curve(d3.curveBasis); // Use curve basis for additional smoothing
 
     // Update the path with transition
     path
-      .datum(data)
+      .datum(limitedData)
       .transition()
       .ease(d3.easeLinear)
       .duration(1000)
