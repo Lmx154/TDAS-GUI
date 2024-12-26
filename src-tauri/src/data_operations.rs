@@ -233,11 +233,10 @@ fn parse_telemetry(message: &str, rssi: i32, snr: f32) -> Option<TelemetryData> 
 
     // Split the data into individual values
     let values: Vec<&str> = data_str.split(',').collect();
-    if values.len() != 18 {
+    if values.len() != 16 {
         return None;
     }
 
-    // Parse all values, using ? operator to handle potential parsing errors
     Some(TelemetryData {
         timestamp,
         accel_x: values[0].trim().parse().ok()?,
@@ -246,18 +245,18 @@ fn parse_telemetry(message: &str, rssi: i32, snr: f32) -> Option<TelemetryData> 
         gyro_x: values[3].trim().parse().ok()?,
         gyro_y: values[4].trim().parse().ok()?,
         gyro_z: values[5].trim().parse().ok()?,
-        imu_temp: values[6].trim().parse().ok()?,
-        bme_temp: values[7].trim().parse().ok()?,
-        bme_pressure: values[8].trim().parse().ok()?,
-        bme_altitude: values[9].trim().parse().ok()?,
-        bme_humidity: values[10].trim().parse().ok()?,
-        gps_fix: values[11].trim().parse().ok()?,
-        gps_fix_quality: values[12].trim().parse().ok()?,
-        gps_lat: values[13].trim().parse().ok()?,
-        gps_lon: values[14].trim().parse().ok()?,
-        gps_speed: values[15].trim().parse().ok()?,
-        gps_altitude: values[16].trim().parse().ok()?,
-        gps_satellites: values[17].trim().parse().ok()?,
+        imu_temp: 0.0, // No IMU temp in new data, set to 0
+        bme_temp: values[6].trim().parse().ok()?,
+        bme_pressure: values[7].trim().parse().ok()?,
+        bme_altitude: values[8].trim().parse().ok()?,
+        bme_humidity: values[9].trim().parse().ok()?,
+        gps_fix: values[10].trim().parse().ok()?,
+        gps_fix_quality: values[11].trim().parse().ok()?,
+        gps_lat: values[12].trim().parse().ok()?,
+        gps_lon: values[13].trim().parse().ok()?,
+        gps_speed: values[14].trim().parse().ok()?,
+        gps_altitude: 0.0, // Not in new data, set to 0
+        gps_satellites: values[15].trim().parse().ok()?,
         rssi,
         snr,
     })
