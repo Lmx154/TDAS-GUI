@@ -38,14 +38,7 @@ function TestPage() {
     snr: 0,
   });
   const [telemetryData, setTelemetryData] = useState([]);
-  const [sensorArrays, setSensorArrays] = useState({
-    Accel_xArray: [],
-    Accel_yArray: [],
-    Accel_ZArray: [],
-    gxArray: [],
-    gyArray: [],
-    gzArray: []
-  });
+  const [selectedGraph, setSelectedGraph] = useState("BME Temperature");
 
   // Define fetchFiles function
   async function fetchFiles() {
@@ -74,16 +67,6 @@ function TestPage() {
     // Listen for telemetry updates
     const unlisten = listen("telemetry-update", (event) => {
       setTelemetry(event.payload);
-
-      // Update sensor arrays
-      setSensorArrays(prev => ({
-        Accel_xArray: [...prev.Accel_xArray, event.payload.accel_x].slice(-100),
-        Accel_yArray: [...prev.Accel_yArray, event.payload.accel_y].slice(-100),
-        Accel_ZArray: [...prev.Accel_ZArray, event.payload.accel_z].slice(-100),
-        gxArray: [...prev.gxArray, event.payload.gyro_x].slice(-100),
-        gyArray: [...prev.gyArray, event.payload.gyro_y].slice(-100),
-        gzArray: [...prev.gzArray, event.payload.gyro_z].slice(-100)
-      }));
 
       setTelemetryData((prevData) => {
         const newData = [
@@ -151,129 +134,199 @@ function TestPage() {
     }
   }
 
+  const renderGraph = () => {
+    switch (selectedGraph) {
+      case "BME Temperature":
+        return (
+          <LineChart
+            data={telemetryData}
+            xAccessor={(d) => new Date(d.timestamp)}
+            yAccessor={(d) => d.bme_temp}
+            color="red"
+            title="BME Temperature"
+            width={800}
+            height={300}
+            margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
+          />
+        );
+      case "IMU Temperature":
+        return (
+          <LineChart
+            data={telemetryData}
+            xAccessor={(d) => new Date(d.timestamp)}
+            yAccessor={(d) => d.imu_temp}
+            color="blue"
+            title="IMU Temperature"
+            width={800}
+            height={300}
+            margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
+          />
+        );
+      case "BME Pressure":
+        return (
+          <LineChart
+            data={telemetryData}
+            xAccessor={(d) => new Date(d.timestamp)}
+            yAccessor={(d) => d.bme_pressure}
+            color="green"
+            title="BME Pressure"
+            width={800}
+            height={300}
+            margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
+          />
+        );
+      case "GPS Speed":
+        return (
+          <LineChart
+            data={telemetryData}
+            xAccessor={(d) => new Date(d.timestamp)}
+            yAccessor={(d) => d.gps_speed}
+            color="purple"
+            title="GPS Speed"
+            width={800}
+            height={300}
+            margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
+          />
+        );
+      case "Velocity Over Time":
+        return (
+          <LineChart
+            data={telemetryData}
+            xAccessor={(d) => new Date(d.timestamp)}
+            yAccessor={(d) => d.velocity}
+            color="orange"
+            title="Velocity Over Time"
+            width={800}
+            height={300}
+            margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className={`p-4 ${isDarkMode ? "text-white" : "text-black"}`}>
       <h1 className="text-2xl font-bold text-center mb-4">Test Page</h1>
-      <div className="p-4 border rounded bg-white/30 backdrop-blur-md mb-4">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            openSerialPort();
-          }}
-          className="mb-4"
-        >
-          <select
-            value={portName}
-            onChange={(e) => setPortName(e.target.value)}
-            className="border rounded p-2 mr-2 text-black"
-          >
-            <option value="">Select Port</option>
-            {portList.map((port) => (
-              <option key={port} value={port}>
-                {port}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Baud Rate"
-            value={baudRate}
-            onChange={(e) => setBaudRate(e.target.value)}
-            className="border rounded p-2 mr-2 text-black w-24"
-          />
-          <button type="submit" className="bg-blue-500 text-white p-2 rounded">
-            Open Serial Port
-          </button>
-        </form>
+      
+      {/* Main content area */}
+      <div className="flex flex-col h-full">
+        {/* Upper section with rocket model and chart */}
+        <div className="flex justify-center gap-8 mb-4">
+          {/* 3D Rocket container */}
+          <div className="w-[400px] p-4 border rounded bg-white/30 backdrop-blur-md">
+            <h2 className="text-xl font-bold mb-4">3D Rocket Visualization</h2>
+            <RocketModel
+              gyro_x={telemetry.gyro_x}
+              gyro_y={telemetry.gyro_y}
+              gyro_z={telemetry.gyro_z}
+            />
+          </div>
 
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="File Name"
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
-            className="border rounded p-2 mr-2 text-black"
-          />
-          <button onClick={createFile} className="bg-blue-500 text-white p-2 rounded">
-            Create File
-          </button>
+          {/* Chart container */}
+          <div className="w-[600px] p-4 border rounded bg-white/30 backdrop-blur-md">
+            <h2 className="text-xl font-bold mb-4">Telemetry Charts</h2>
+            <select
+              value={selectedGraph}
+              onChange={(e) => setSelectedGraph(e.target.value)}
+              className="border rounded p-2 text-black mb-4 w-full"
+            >
+              <option value="BME Temperature">BME Temperature</option>
+              <option value="IMU Temperature">IMU Temperature</option>
+              <option value="BME Pressure">BME Pressure</option>
+              <option value="GPS Speed">GPS Speed</option>
+              <option value="Velocity Over Time">Velocity Over Time</option>
+            </select>
+            {renderGraph()}
+          </div>
         </div>
 
-        <div className="mb-4">
-          <select
-            value={textFilePath}
-            onChange={(e) => setTextFilePath(e.target.value)}
-            onClick={fetchFiles}
-            className="border rounded p-2 text-black"
-          >
-            <option value="">Select file</option>
-            {fileList.map(([fileName, filePath]) => (
-              <option key={filePath} value={filePath}>
-                {fileName}
-              </option>
-            ))}
-          </select>
+        {/* Bottom section with controls and telemetry side by side */}
+        <div className="flex justify-center gap-8 mt-auto">
+          {/* Controls section */}
+          <div className="w-[420px] p-4 border rounded bg-white/30 backdrop-blur-md">
+            <h2 className="text-xl font-bold mb-4">Controls</h2>
+            <div className="flex flex-col space-y-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  openSerialPort();
+                }}
+                className="flex flex-wrap gap-2"
+              >
+                <select
+                  value={portName}
+                  onChange={(e) => setPortName(e.target.value)}
+                  className="border rounded p-2 mr-2 text-black"
+                >
+                  <option value="">Select Port</option>
+                  {portList.map((port) => (
+                    <option key={port} value={port}>
+                      {port}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Baud Rate"
+                  value={baudRate}
+                  onChange={(e) => setBaudRate(e.target.value)}
+                  className="border rounded p-2 mr-2 text-black w-24"
+                />
+                <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+                  Open Serial Port
+                </button>
+              </form>
+
+              <div className="flex flex-wrap gap-2">
+                <input
+                  type="text"
+                  placeholder="File Name"
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  className="border rounded p-2 mr-2 text-black"
+                />
+                <button onClick={createFile} className="bg-blue-500 text-white p-2 rounded">
+                  Create File
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={textFilePath}
+                  onChange={(e) => setTextFilePath(e.target.value)}
+                  onClick={fetchFiles}
+                  className="border rounded p-2 text-black"
+                >
+                  <option value="">Select file</option>
+                  {fileList.map(([fileName, filePath]) => (
+                    <option key={filePath} value={filePath}>
+                      {fileName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button onClick={writeSerialToFile} className="bg-blue-500 text-white p-2 rounded mr-2">
+                  Start Record
+                </button>
+                <button onClick={startDataParsing} className="bg-blue-500 text-white p-2 rounded">
+                  Start Data Parser
+                </button>
+              </div>
+              <p className="mt-4">{connectionMsg}</p>
+            </div>
+          </div>
+
+          {/* Telemetry panel */}
+          <div className="w-[375px]">
+            <TelemetryDisplay telemetry={telemetry} />
+          </div>
         </div>
-
-        <button onClick={writeSerialToFile} className="bg-blue-500 text-white p-2 rounded mr-2">
-          Start Record
-        </button>
-        <button onClick={startDataParsing} className="bg-blue-500 text-white p-2 rounded">
-          Start Data Parser
-        </button>
-        <p className="mt-4">{connectionMsg}</p>
       </div>
-
-      <TelemetryDisplay telemetry={telemetry} />
-      <RocketModel
-        Accel_xArray={sensorArrays.Accel_xArray}
-        Accel_yArray={sensorArrays.Accel_yArray}
-        Accel_ZArray={sensorArrays.Accel_ZArray}
-        gxArray={sensorArrays.gxArray}
-        gyArray={sensorArrays.gyArray}
-        gzArray={sensorArrays.gzArray}
-      />
-      <LineChart
-        data={telemetryData}
-        xAccessor={(d) => new Date(d.timestamp)}
-        yAccessor={(d) => d.bme_temp}
-        color="red"
-        title="BME Temperature"
-        width={800}
-        height={300}
-        margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
-      />
-      <LineChart
-        data={telemetryData}
-        xAccessor={(d) => new Date(d.timestamp)}
-        yAccessor={(d) => d.imu_temp}
-        color="blue"
-        title="IMU Temperature"
-        width={800}
-        height={300}
-        margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
-      />
-      <LineChart
-        data={telemetryData}
-        xAccessor={(d) => new Date(d.timestamp)}
-        yAccessor={(d) => d.bme_pressure}
-        color="green"
-        title="BME Pressure"
-        width={800}
-        height={300}
-        margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
-      />
-      <LineChart
-        data={telemetryData}
-        xAccessor={(d) => new Date(d.timestamp)}
-        yAccessor={(d) => d.gps_speed}
-        color="purple"
-        title="GPS Speed"
-        width={800}
-        height={300}
-        margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
-      />
-      </div>
+    </div>
   );
 }
 

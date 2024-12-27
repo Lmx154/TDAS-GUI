@@ -2,7 +2,7 @@ import React from "react";
 
 function TelemetryDisplay({ telemetry }) {
   return (
-    <div className="grid grid-cols-3 gap-4 p-2 border rounded mt-4 bg-white/30 backdrop-blur-md text-sm">
+    <div className="w-[375px] grid grid-cols-3 gap-3 p-3 border rounded mt-4 bg-white/30 backdrop-blur-md text-sm">
       {/* Column 1: Motion Data */}
       <div className="space-y-2">
         <div className="p-1">
@@ -22,7 +22,7 @@ function TelemetryDisplay({ telemetry }) {
       </div>
 
       {/* Column 2: Environmental Data */}
-      <div className="space-y-2 border-l pl-4">
+      <div className="space-y-2 border-l pl-3">
         <div className="p-1">
           <div><strong>BME T:</strong> {telemetry.bme_temp.toFixed(1)}°C</div>
           <div><strong>BME H:</strong> {telemetry.bme_humidity.toFixed(0)}%</div>
@@ -36,7 +36,7 @@ function TelemetryDisplay({ telemetry }) {
       </div>
 
       {/* Column 3: GPS Data */}
-      <div className="space-y-2 border-l pl-4">
+      <div className="space-y-2 border-l pl-3">
         <div className="p-1">
           <div><strong>GPS Lat:</strong> {telemetry.gps_lat.toFixed(4)}</div>
           <div><strong>GPS Lon:</strong> {telemetry.gps_lon.toFixed(4)}</div>
