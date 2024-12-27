@@ -20,10 +20,12 @@ function Map({ telemetry, defaultPosition = [26.306212, -98.174716] }) {
   // Initialize map
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
-      mapInstanceRef.current = L.map(mapRef.current).setView(defaultPosition, 15);
+      mapInstanceRef.current = L.map(mapRef.current, {
+        attributionControl: false  // This removes the attribution bar
+      }).setView(defaultPosition, 15);
       
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+        attribution: false  // This ensures no attribution is added by the tile layer
       }).addTo(mapInstanceRef.current);
 
       markerRef.current = L.marker(defaultPosition)
