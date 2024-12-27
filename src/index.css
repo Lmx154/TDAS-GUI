@@ -1,3 +1,6 @@
+/* Import Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,4 +21,14 @@ html, #root {
 
 #root {
   position: relative;
+}
+
+/* Leaflet map styles */
+.leaflet-container {
+  border-radius: 0.375rem;
+}
+
+.leaflet-popup-content {
+  color: black;
+  margin: 0.5rem;
 }
