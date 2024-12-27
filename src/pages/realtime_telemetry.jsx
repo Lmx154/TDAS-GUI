@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import TelemetryDisplay from "../components/telemetry_panel";
 import RocketModel from "../components/3drocket";
 import LineChart from "../components/charts";
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import Map from "../components/map";
 
 function TestPage() {
   const [portName, setPortName] = useState("");
@@ -41,11 +40,6 @@ function TestPage() {
   });
   const [telemetryData, setTelemetryData] = useState([]);
   const [selectedGraph, setSelectedGraph] = useState("BME Temperature");
-  const [mapCenter, setMapCenter] = useState([0, 0]);
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const markerRef = useRef(null);
-  const defaultPosition = [26.306212, -98.174716];  // Add this line
 
   // Define fetchFiles function
   async function fetchFiles() {
@@ -101,62 +95,6 @@ function TestPage() {
       unlisten.then((f) => f()); // Cleanup listener when component unmounts
     };
   }, []);
-
-  // Fix for Leaflet default marker icon
-  useEffect(() => {
-    delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    });
-  }, []);
-
-  useEffect(() => {
-    if (mapRef.current && !mapInstanceRef.current) {
-      // Initialize map with default position
-      mapInstanceRef.current = L.map(mapRef.current).setView(defaultPosition, 15);
-      
-      // Add tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(mapInstanceRef.current);
-
-      // Add default marker
-      markerRef.current = L.marker(defaultPosition)
-        .bindPopup('Default Location<br>Lat: 26.306212<br>Lon: -98.174716')
-        .addTo(mapInstanceRef.current);
-    }
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  // Update marker position when telemetry changes
-  useEffect(() => {
-    if (mapInstanceRef.current && telemetry.gps_lat && telemetry.gps_lon) {
-      const position = [telemetry.gps_lat, telemetry.gps_lon];
-      
-      if (!markerRef.current) {
-        markerRef.current = L.marker(position)
-          .bindPopup(`Lat: ${telemetry.gps_lat.toFixed(6)}<br>
-                     Lon: ${telemetry.gps_lon.toFixed(6)}<br>
-                     Alt: ${telemetry.gps_altitude}m`)
-          .addTo(mapInstanceRef.current);
-      } else {
-        markerRef.current.setLatLng(position)
-          .setPopupContent(`Lat: ${telemetry.gps_lat.toFixed(6)}<br>
-                          Lon: ${telemetry.gps_lon.toFixed(6)}<br>
-                          Alt: ${telemetry.gps_altitude}m`);
-      }
-      
-      mapInstanceRef.current.setView(position);
-    }
-  }, [telemetry.gps_lat, telemetry.gps_lon, telemetry.gps_altitude]);
 
   async function openSerialPort() {
     try {
@@ -273,24 +211,13 @@ function TestPage() {
     <div className={`p-4 ${isDarkMode ? "text-white" : "text-black"}`}>
       <h1 className="text-2xl font-bold text-center mb-4">DAS GUI</h1>
       
-      {/* Main content area */}
       <div className="flex flex-col h-full">
-        {/* Upper section with rocket model and chart */}
+        {/* Upper section with map and chart only */}
         <div className="flex justify-center gap-8 mb-4">
-          {/* 3D Rocket container */}
-          <div className="w-[400px] p-4 border rounded bg-white/30 backdrop-blur-md">
-            <h2 className="text-xl font-bold mb-4">3D Rocket Visualization</h2>
-            <RocketModel
-              gyro_x={telemetry.gyro_x}
-              gyro_y={telemetry.gyro_y}
-              gyro_z={telemetry.gyro_z}
-            />
-          </div>
-
           {/* Map container */}
           <div className="w-[400px] h-[400px] p-4 border rounded bg-white/30 backdrop-blur-md">
             <h2 className="text-xl font-bold mb-4">GPS Location</h2>
-            <div ref={mapRef} style={{ height: "300px", width: "100%" }} />
+            <Map telemetry={telemetry} />
           </div>
 
           {/* Chart container */}
@@ -311,8 +238,18 @@ function TestPage() {
           </div>
         </div>
 
-        {/* Bottom section with controls and telemetry side by side */}
+        {/* Bottom section with 3D rocket, controls and telemetry */}
         <div className="flex justify-center gap-8 mt-auto">
+          {/* 3D Rocket container */}
+          <div className="w-[400px] p-4 border rounded bg-white/30 backdrop-blur-md">
+            <h2 className="text-xl font-bold mb-4">3D Rocket Visualization</h2>
+            <RocketModel
+              gyro_x={telemetry.gyro_x}
+              gyro_y={telemetry.gyro_y}
+              gyro_z={telemetry.gyro_z}
+            />
+          </div>
+
           {/* Controls section */}
           <div className="w-[420px] p-4 border rounded bg-white/30 backdrop-blur-md">
             <h2 className="text-xl font-bold mb-4">Controls</h2>
