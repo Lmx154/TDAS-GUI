@@ -45,6 +45,7 @@ function TestPage() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
+  const defaultPosition = [26.306212, -98.174716];  // Add this line
 
   // Define fetchFiles function
   async function fetchFiles() {
@@ -113,13 +114,18 @@ function TestPage() {
 
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
-      // Initialize map
-      mapInstanceRef.current = L.map(mapRef.current).setView([0, 0], 13);
+      // Initialize map with default position
+      mapInstanceRef.current = L.map(mapRef.current).setView(defaultPosition, 15);
       
       // Add tile layer
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
       }).addTo(mapInstanceRef.current);
+
+      // Add default marker
+      markerRef.current = L.marker(defaultPosition)
+        .bindPopup('Default Location<br>Lat: 26.306212<br>Lon: -98.174716')
+        .addTo(mapInstanceRef.current);
     }
 
     return () => {
