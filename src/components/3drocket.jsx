@@ -2,8 +2,9 @@ import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { AxesHelper } from 'three';
+import { AxesHelper } from "three";
 
+import MadgwickAHRS from "./Madgwick_filter"; // <-- Make sure this path is correct
 
 function initThreeScene({
   mountRef,
@@ -12,11 +13,10 @@ function initThreeScene({
   groupRef,
   rocketRef,
   animationFrameRef,
-  orientationRef,
+  madgwickRef,       // We'll store our Madgwick instance here
   lastFrameTimeRef,
   gyroRef,
-  accelRef,
-  accelAngleRef,       // <-- We'll store smoothed accel angles here
+  accelRef
 }) {
   const mount = mountRef.current;
   const scene = new THREE.Scene();
@@ -29,8 +29,8 @@ function initThreeScene({
     0.1,
     1000
   );
-  
-  // Set camera position and orientation for Z-up
+
+  // Position camera for Z-up
   const distance = 8;
   const angle = Math.PI / 4; // 45 degrees
   camera.position.set(
@@ -39,8 +39,8 @@ function initThreeScene({
     distance * Math.sin(angle)
   );
   camera.lookAt(0, 0, 0);
-  
-  // Create a matrix to reorient the camera
+
+  // Reorient camera so +Z is up in view
   const rotationMatrix = new THREE.Matrix4();
   rotationMatrix.makeRotationX(Math.PI / 2);
   camera.up.applyMatrix4(rotationMatrix);
@@ -61,12 +61,10 @@ function initThreeScene({
   controls.dampingFactor = 0.05;
   controls.minDistance = 5;
   controls.maxDistance = 15;
-  
-  // Apply same orientation to controls
   controls.target.set(0, 0, 0);
   controls.update();
 
-  // Light on camera
+  // Light attached to camera
   const cameraLight = new THREE.SpotLight(0xffffff, 200);
   cameraLight.position.set(0, 0, 1);
   cameraLight.angle = Math.PI / 2;
@@ -75,25 +73,28 @@ function initThreeScene({
   camera.add(cameraLight);
   scene.add(camera);
 
-  // Cleanup sets
+  // For disposing geometry, etc.
   const materials = new Set();
   const geometries = new Set();
 
-  // Group for rocket
+  // Create a group for the rocket
   const group = new THREE.Group();
   groupRef.current = group;
   scene.add(group);
 
-  // Load rocket
-  const loader = new GLTFLoader();
-  const axesHelper = new THREE.AxesHelper(6); // length 2
+  // Add an AxesHelper to visualize X (red), Y (green), Z (blue)
+  const axesHelper = new AxesHelper(6);
   group.add(axesHelper);
+
+  // Load rocket glTF
+  const loader = new GLTFLoader();
   loader.load(
     "/rocket_model.gltf",
-    (gltf) => {
+    gltf => {
       const rocket = gltf.scene;
       rocket.scale.set(0.5, 0.5, 0.5);
-      // Rotate -90 degrees around X axis to point up Z instead of Y
+
+      // Rotate rocket so nose points up +Z
       rocket.rotation.x = Math.PI / 2;
       rocket.rotation.order = "XYZ";
       rocket.position.set(0, 0, 0);
@@ -115,7 +116,7 @@ function initThreeScene({
       rocketRef.current = rocket;
     },
     undefined,
-    (error) => {
+    error => {
       console.error(error);
     }
   );
@@ -124,97 +125,39 @@ function initThreeScene({
   function animate() {
     animationFrameRef.current = requestAnimationFrame(animate);
 
-    // 1) Compute dt
+    // Time step
     const currentTime = performance.now();
     const deltaMs = currentTime - lastFrameTimeRef.current;
     lastFrameTimeRef.current = currentTime;
-    const dt = deltaMs / 1000;
+    const dt = deltaMs / 1000; // seconds
 
-    // 2) Read gyro (deg/s) + accel (m/s^2)
-    const { x: gx, y: gy, z: gz } = gyroRef.current;
+    // Get current sensor data
+    // Gyro in deg/sec, accel in m/s^2
+    const { x: gxDeg, y: gyDeg, z: gzDeg } = gyroRef.current;
     const { x: ax, y: ay, z: az } = accelRef.current;
 
-    // Current angles (from last frame)
-    let pitch = orientationRef.current.pitch;
-    let roll  = orientationRef.current.roll;
-    let yaw   = orientationRef.current.yaw;
+    // Madgwick wants gyro in rad/s
+    const gxRad = THREE.MathUtils.degToRad(gxDeg);
+    const gyRad = THREE.MathUtils.degToRad(gyDeg);
+    const gzRad = THREE.MathUtils.degToRad(gzDeg);
 
-    // 3) Integrate gyro for pitch/roll/yaw
-    const pitchGyro = pitch + gx * dt; 
-    const rollGyro  = roll  + gy * dt; 
-    const yawGyro   = yaw   + gz * dt; // no magnetometer => can't correct yaw drift
+    // Update the Madgwick filter
+    // If you have a constant sampling rate, set sampleFreq to 1/dt or similar.
+    // We'll call .update(...) each frame.
+    const sampleFreq = dt > 0 ? 1 / dt : 100; // fallback
+    madgwickRef.current.sampleFreq = sampleFreq;
 
-    // 4) Detect if rocket is near rest:
-    //    - gyro near zero, e.g. < 0.2 deg/s
-    //    - accel near 9.81 ± 0.3
-    const gyroMagnitude = Math.sqrt(gx*gx + gy*gy + gz*gz);
-    const isGyroSmall = gyroMagnitude < 0.2;
-    const accelMagnitude = Math.sqrt(ax*ax + ay*ay + az*az);
-    const nominalGravity = 9.81;
-    const gravityTolerance = 0.3;
-    const isAccelNearGravity = Math.abs(accelMagnitude - nominalGravity) < gravityTolerance;
+    // madgwick.update(gxRad, gyRad, gzRad, ax, ay, az, mx, my, mz) if you have mag
+    madgwickRef.current.update(gxRad, gyRad, gzRad, ax, ay, az);
 
-    const atRest = isGyroSmall && isAccelNearGravity;
+    // Get Euler angles from the filter in degrees
+    const { roll, pitch, yaw } = madgwickRef.current.getEulerAnglesDeg();
 
-    // 5) Convert accelerometer to angles (raw)
-    let pitchAccRaw = 0;
-    let rollAccRaw  = 0;
-    if (!(ax === 0 && ay === 0 && az === 0)) {
-      const pitchRad = Math.atan2(-ax, Math.sqrt(ay * ay + az * az));
-      const rollRad  = Math.atan2(ay, az);
-      pitchAccRaw = THREE.MathUtils.radToDeg(pitchRad);
-      rollAccRaw  = THREE.MathUtils.radToDeg(rollRad);
-    }
-
-    // 6) Smooth the accel angles before using them in the complementary filter
-    //    This helps kill random flicking.
-    const accelFilterFactor = 0.95; // bigger => heavier smoothing
-    // read previous smoothed angles
-    let pitchAccSmoothed = accelAngleRef.current.pitch;
-    let rollAccSmoothed  = accelAngleRef.current.roll;
-    // update them
-    pitchAccSmoothed = pitchAccSmoothed * accelFilterFactor 
-                     + pitchAccRaw * (1 - accelFilterFactor);
-    rollAccSmoothed  = rollAccSmoothed  * accelFilterFactor 
-                     + rollAccRaw  * (1 - accelFilterFactor);
-
-    // store back
-    accelAngleRef.current.pitch = pitchAccSmoothed;
-    accelAngleRef.current.roll  = rollAccSmoothed;
-
-    // 7) Decide how much we trust the accelerometer
-    //    - if rocket is at rest, might set orientation fully upright or use huge alpha
-    //    - if rocket is accelerating, might ignore accel
-    let alpha = 0.98;
-    // If rocket is accelerating strongly or we see large thrust,
-    // a separate approach might set alpha = 0.995. (You already have that logic.)
-    // But let's do a "rest" override:
-    if (atRest) {
-      // E.g. raise alpha even more. 
-      // Or skip gyro integration if you trust it’s actually at rest upright.
-      alpha = 0.995;
-    }
-
-    // Combine angles with complementary filter
-    let pitchNew = pitchGyro;
-    let rollNew  = rollGyro;
-    let yawNew   = yawGyro;  // still no magnetometer correction
-
-    // If you want a “dynamic detection” to skip accel, you could do that here.
-    // We'll do a simpler approach: always do partial fusion:
-    pitchNew = alpha * pitchGyro + (1 - alpha) * pitchAccSmoothed;
-    rollNew  = alpha * rollGyro  + (1 - alpha) * rollAccSmoothed;
-
-    orientationRef.current.pitch = pitchNew % 360;
-    orientationRef.current.roll  = rollNew  % 360;
-    orientationRef.current.yaw   = yawNew   % 360;
-
-    // 8) Apply rotation in Three.js (convert degrees -> radians)
-    if (groupRef.current) {
-      groupRef.current.rotation.x = THREE.MathUtils.degToRad(orientationRef.current.pitch);
-      groupRef.current.rotation.y = THREE.MathUtils.degToRad(orientationRef.current.yaw);
-      groupRef.current.rotation.z = THREE.MathUtils.degToRad(orientationRef.current.roll);
-    }
+    // Convert to radians for Three.js
+    // Decide how you map roll/pitch/yaw to x,y,z rotation depending on your rocket’s axis
+    group.rotation.x = THREE.MathUtils.degToRad(pitch);
+    group.rotation.y = THREE.MathUtils.degToRad(yaw);
+    group.rotation.z = THREE.MathUtils.degToRad(roll);
 
     controls.update();
     renderer.render(scene, camera);
@@ -230,19 +173,19 @@ function initThreeScene({
   };
   window.addEventListener("resize", handleResize);
 
-  // Return cleanup
+  // Cleanup
   return () => {
     window.removeEventListener("resize", handleResize);
     cancelAnimationFrame(animationFrameRef.current);
 
-    materials.forEach((m) => m.dispose());
-    geometries.forEach((g) => g.dispose());
+    materials.forEach(m => m.dispose());
+    geometries.forEach(g => g.dispose());
 
-    scene.traverse((object) => {
+    scene.traverse(object => {
       if (object.geometry) object.geometry.dispose();
       if (object.material) {
         if (Array.isArray(object.material)) {
-          object.material.forEach((mat) => mat.dispose());
+          object.material.forEach(mat => mat.dispose());
         } else {
           object.material.dispose();
         }
@@ -258,11 +201,11 @@ function initThreeScene({
 }
 
 /**
- * RocketModel - With a Smoother Complementary Filter
+ * RocketModel - Using MadgwickAHRS for orientation
  * 
  * Props:
- *  - gyro_x, gyro_y, gyro_z    (deg/s)
- *  - accel_x, accel_y, accel_z (m/s^2)
+ *  gyro_x, gyro_y, gyro_z: gyroscope in deg/s
+ *  accel_x, accel_y, accel_z: accelerometer in m/s^2
  */
 function RocketModel({
   gyro_x = 0, gyro_y = 0, gyro_z = 0,
@@ -272,24 +215,25 @@ function RocketModel({
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
   const animationFrameRef = useRef(null);
+
   const groupRef = useRef(null);
   const rocketRef = useRef(null);
 
-  // Latest sensor readings
   const gyroRef  = useRef({ x: 0, y: 0, z: 0 });
   const accelRef = useRef({ x: 0, y: 0, z: 0 });
 
-  // Store orientation in degrees
-  const orientationRef = useRef({ pitch: 0, roll: 0, yaw: 0 });
+  // We'll store the Madgwick instance here
+  const madgwickRef = useRef(null);
 
-  // Store smoothed accel angles
-  const accelAngleRef = useRef({ pitch: 0, roll: 0 });
-
-  // Last frame time for dt
+  // Last frame time
   const lastFrameTimeRef = useRef(performance.now());
 
-  // 1) Init scene once
   useEffect(() => {
+    // 1) Initialize the Madgwick filter once
+    madgwickRef.current = new MadgwickAHRS(100, 0.1); 
+    // sampleFreq=100 Hz, beta=0.1 -> tweak as needed
+
+    // 2) Initialize Three.js scene
     const cleanup = initThreeScene({
       mountRef,
       sceneRef,
@@ -297,20 +241,20 @@ function RocketModel({
       groupRef,
       rocketRef,
       animationFrameRef,
-      orientationRef,
+      madgwickRef,
       lastFrameTimeRef,
       gyroRef,
-      accelRef,
-      accelAngleRef,
+      accelRef
     });
     return cleanup;
   }, []);
 
-  // 2) On prop changes, update sensor refs
+  // On each prop change, update the sensor refs
   useEffect(() => {
     gyroRef.current.x  = gyro_x;
     gyroRef.current.y  = gyro_y;
     gyroRef.current.z  = gyro_z;
+
     accelRef.current.x = accel_x;
     accelRef.current.y = accel_y;
     accelRef.current.z = accel_z;
