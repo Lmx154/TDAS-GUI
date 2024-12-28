@@ -58,6 +58,7 @@ function TestPage() {
       ]
     }
   );
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     const unlisten = listen("telemetry-update", (event) => {
@@ -171,6 +172,13 @@ function TestPage() {
     <div className={`p-4 ${isDarkMode ? "text-white" : "text-black"}`}>
       <h1 className="text-2xl font-bold text-center mb-4">DAS GUI</h1>
       
+      <button
+        onClick={() => setIsEditMode(!isEditMode)}
+        className="mb-4 p-2 border rounded bg-blue-500 text-white"
+      >
+        {isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
+      </button>
+
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
@@ -178,8 +186,8 @@ function TestPage() {
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
         rowHeight={30}
-        isDraggable={true}
-        isResizable={true}
+        isDraggable={isEditMode}
+        isResizable={isEditMode}
       >
         <div key="gps" className="p-4 border rounded bg-white/30 backdrop-blur-md">
           <h2 className="text-xl font-bold mb-4">GPS Location</h2>
