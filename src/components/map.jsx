@@ -1,8 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useLayout } from '../context/LayoutContext';
 
 function Map({ telemetry, defaultPosition = [26.306212, -98.174716] }) {
+  const { componentDimensions } = useLayout();
+  const dimensions = componentDimensions.gps || { width: "100%", height: 300 };
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
@@ -57,7 +60,22 @@ function Map({ telemetry, defaultPosition = [26.306212, -98.174716] }) {
     }
   }, [telemetry.gps_lat, telemetry.gps_lon, telemetry.gps_altitude]);
 
-  return <div ref={mapRef} style={{ height: "300px", width: "100%" }} />;
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.invalidateSize();
+    }
+  }, [dimensions]);
+
+  return (
+    <div 
+      ref={mapRef} 
+      style={{ 
+        height: dimensions.height,
+        width: dimensions.width,
+        transition: 'all 0.3s ease'
+      }} 
+    />
+  );
 }
 
 export default Map;

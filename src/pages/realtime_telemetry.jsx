@@ -9,6 +9,7 @@ import LineChart from "../components/charts";
 import Map from "../components/map";
 import Controls from "../components/controls";
 import ThreeDChart from "../components/3dcharts";
+import { useLayout } from '../context/LayoutContext';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -59,6 +60,7 @@ function TestPage() {
     }
   );
   const [isEditMode, setIsEditMode] = useState(false);
+  const { setComponentDimensions, updateDimensions } = useLayout();
 
   useEffect(() => {
     const unlisten = listen("telemetry-update", (event) => {
@@ -163,9 +165,27 @@ function TestPage() {
     }
   };
 
+  const calculateDimensions = (layout) => {
+    const containerPadding = 32; // 16px * 2 for p-4
+    const gridMargin = 32; // ResponsiveGridLayout default margin
+    const availableWidth = window.innerWidth - containerPadding - gridMargin;
+    
+    const dimensions = {};
+    layout.forEach(item => {
+      dimensions[item.i] = {
+        width: Math.floor((item.w * availableWidth) / 12) - gridMargin,
+        height: Math.floor(item.h * 30),
+        x: item.x,
+        y: item.y
+      };
+    });
+    updateDimensions(dimensions);
+  };
+
   const onLayoutChange = (layout, layouts) => {
     setLayouts(layouts);
     localStorage.setItem("dashboardLayout", JSON.stringify(layouts));
+    calculateDimensions(layout);
   };
 
   return (
@@ -183,6 +203,8 @@ function TestPage() {
         className="layout"
         layouts={layouts}
         onLayoutChange={onLayoutChange}
+        onResize={(layout) => calculateDimensions(layout)}
+        onDrag={(layout) => calculateDimensions(layout)}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
         rowHeight={30}

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import * as d3 from "d3";
 import PropTypes from "prop-types";
+import { useLayout } from '../context/LayoutContext';
 
 // Add smoothing function
 const smoothData = (data, xAccessor, yAccessor, windowSize = 5) => {
@@ -20,11 +21,12 @@ function LineChart({
   xAccessor,
   yAccessor,
   color = "steelblue",
-  width = 600,  // Changed from 800 to 600
-  height = 400,
-  margin = { top: 20, right: 20, bottom: 30, left: 50 },
   title = "",
+  margin = { top: 20, right: 20, bottom: 30, left: 50 },
 }) {
+  const { componentDimensions } = useLayout();
+  const dimensions = componentDimensions.telemetryCharts || { width: 600, height: 400 };
+
   const svgRef = useRef(null);
   const pathRef = useRef(null);
   const xAxisRef = useRef(null);
@@ -42,8 +44,8 @@ function LineChart({
     const xAxisGroup = d3.select(xAxisRef.current);
     const yAxisGroup = d3.select(yAxisRef.current);
 
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    const innerWidth = dimensions.width - margin.left - margin.right;
+    const innerHeight = dimensions.height - margin.top - margin.bottom;
 
     // Update scales to use smoothed values
     const xScale = d3
@@ -86,22 +88,33 @@ function LineChart({
       .ease(d3.easeLinear)
       .duration(1000)
       .attr("d", line);
-  }, [data, xAccessor, yAccessor, color, width, height, margin]);
+  }, [data, xAccessor, yAccessor, color, dimensions, margin]);
+
+  useEffect(() => {
+    // Trigger resize handling when dimensions change
+    if (svgRef.current) {
+      const svg = d3.select(svgRef.current);
+      svg.attr('width', dimensions.width)
+         .attr('height', dimensions.height);
+      // Re-render chart...
+    }
+  }, [dimensions, data]);
 
   return (
     <svg
       ref={svgRef}
-      width={width}
-      height={height}
+      width={dimensions.width}
+      height={dimensions.height}
       style={{
         backgroundColor: "rgba(255, 255, 255, 0.1)",
         borderRadius: "8px",
         padding: "10px",
+        transition: 'all 0.3s ease'
       }}
     >
       {title && (
         <text
-          x={width / 2}
+          x={dimensions.width / 2}
           y={margin.top / 2}
           textAnchor="middle"
           fontSize="16px"

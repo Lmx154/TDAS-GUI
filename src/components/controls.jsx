@@ -82,7 +82,7 @@ function Controls({
   }
 
   return (
-    <div className="w-[420px] p-4 border rounded bg-white/30 backdrop-blur-md">
+    <div className="w-[460px] p-4 border rounded bg-white/30 backdrop-blur-md">
       <h2 className="text-xl font-bold mb-4">Controls</h2>
       <div className="flex flex-col space-y-4">
         <form
@@ -150,7 +150,7 @@ function Controls({
             Start Record
           </button>
           <button onClick={startDataParsing} className="bg-blue-500 text-white p-2 rounded">
-            Start Data Parser
+            Start Data Stream
           </button>
         </div>
         <p className="mt-4">{connectionMsg}</p>

@@ -9,17 +9,20 @@
 import './index.css';
 import { Route, Routes, Navigate } from "react-router-dom";
 import TestPage from "./pages/realtime_telemetry.jsx";
+import { LayoutProvider } from './context/LayoutContext';
 // ...import other pages as needed...
 
 function App() {
   return (
-    <div className="h-full w-full">
-      <Routes>
-        <Route path="/" element={<Navigate to="/test" />} />
-        <Route path="/test" element={<TestPage />} />
-        {/* Add more routes to other pages here */}
-      </Routes>
-    </div>
+    <LayoutProvider>
+      <div className="h-full w-full">
+        <Routes>
+          <Route path="/" element={<Navigate to="/test" />} />
+          <Route path="/test" element={<TestPage />} />
+          {/* Add more routes to other pages here */}
+        </Routes>
+      </div>
+    </LayoutProvider>
   );
 }
 
