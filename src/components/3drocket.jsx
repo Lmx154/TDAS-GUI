@@ -2,11 +2,9 @@ import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { AxesHelper } from 'three';
 
-/**
- * initThreeScene - sets up scene, camera, renderer, rocket group, etc.
- * Returns a cleanup function.
- */
+
 function initThreeScene({
   mountRef,
   sceneRef,
@@ -18,6 +16,7 @@ function initThreeScene({
   lastFrameTimeRef,
   gyroRef,
   accelRef,
+  accelAngleRef,       // <-- We'll store smoothed accel angles here
 }) {
   const mount = mountRef.current;
   const scene = new THREE.Scene();
@@ -30,7 +29,21 @@ function initThreeScene({
     0.1,
     1000
   );
-  camera.position.z = 10;
+  
+  // Set camera position and orientation for Z-up
+  const distance = 8;
+  const angle = Math.PI / 4; // 45 degrees
+  camera.position.set(
+    distance * Math.cos(angle),
+    -distance * Math.cos(angle),
+    distance * Math.sin(angle)
+  );
+  camera.lookAt(0, 0, 0);
+  
+  // Create a matrix to reorient the camera
+  const rotationMatrix = new THREE.Matrix4();
+  rotationMatrix.makeRotationX(Math.PI / 2);
+  camera.up.applyMatrix4(rotationMatrix);
 
   // Renderer
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -48,6 +61,10 @@ function initThreeScene({
   controls.dampingFactor = 0.05;
   controls.minDistance = 5;
   controls.maxDistance = 15;
+  
+  // Apply same orientation to controls
+  controls.target.set(0, 0, 0);
+  controls.update();
 
   // Light on camera
   const cameraLight = new THREE.SpotLight(0xffffff, 200);
@@ -69,13 +86,17 @@ function initThreeScene({
 
   // Load rocket
   const loader = new GLTFLoader();
+  const axesHelper = new THREE.AxesHelper(6); // length 2
+  group.add(axesHelper);
   loader.load(
     "/rocket_model.gltf",
     (gltf) => {
       const rocket = gltf.scene;
       rocket.scale.set(0.5, 0.5, 0.5);
+      // Rotate -90 degrees around X axis to point up Z instead of Y
+      rocket.rotation.x = Math.PI / 2;
       rocket.rotation.order = "XYZ";
-      rocket.position.set(0, -2.7, 0);
+      rocket.position.set(0, 0, 0);
 
       rocket.traverse((node) => {
         if (node.isMesh) {
@@ -113,53 +134,82 @@ function initThreeScene({
     const { x: gx, y: gy, z: gz } = gyroRef.current;
     const { x: ax, y: ay, z: az } = accelRef.current;
 
-    // 3) Convert gyro from deg/s -> deg for this dt
-    //    We'll do everything in degrees for pitch/roll/yaw, then convert to radians for Three.js
-
     // Current angles (from last frame)
     let pitch = orientationRef.current.pitch;
     let roll  = orientationRef.current.roll;
     let yaw   = orientationRef.current.yaw;
 
-    // Integrate gyro
+    // 3) Integrate gyro for pitch/roll/yaw
     const pitchGyro = pitch + gx * dt; 
     const rollGyro  = roll  + gy * dt; 
-    const yawGyro   = yaw   + gz * dt; // No magnetometer => can't correct yaw drift easily
+    const yawGyro   = yaw   + gz * dt; // no magnetometer => can't correct yaw drift
 
-    // 4) Estimate pitch, roll from accel to correct drift
-    //    Convert to degrees
-    //    pitch_acc = atan2(-accX, sqrt(accY^2 + accZ^2))
-    //    roll_acc  = atan2(accY, accZ)
-    //    (Be mindful of coordinate orientation; might need to invert signs.)
-    let pitchAcc = 0;
-    let rollAcc = 0;
+    // 4) Detect if rocket is near rest:
+    //    - gyro near zero, e.g. < 0.2 deg/s
+    //    - accel near 9.81 ± 0.3
+    const gyroMagnitude = Math.sqrt(gx*gx + gy*gy + gz*gz);
+    const isGyroSmall = gyroMagnitude < 0.2;
+    const accelMagnitude = Math.sqrt(ax*ax + ay*ay + az*az);
+    const nominalGravity = 9.81;
+    const gravityTolerance = 0.3;
+    const isAccelNearGravity = Math.abs(accelMagnitude - nominalGravity) < gravityTolerance;
+
+    const atRest = isGyroSmall && isAccelNearGravity;
+
+    // 5) Convert accelerometer to angles (raw)
+    let pitchAccRaw = 0;
+    let rollAccRaw  = 0;
     if (!(ax === 0 && ay === 0 && az === 0)) {
-      // Calculate in radians:
       const pitchRad = Math.atan2(-ax, Math.sqrt(ay * ay + az * az));
       const rollRad  = Math.atan2(ay, az);
-
-      // Convert to degrees
-      pitchAcc = THREE.MathUtils.radToDeg(pitchRad);
-      rollAcc  = THREE.MathUtils.radToDeg(rollRad);
+      pitchAccRaw = THREE.MathUtils.radToDeg(pitchRad);
+      rollAccRaw  = THREE.MathUtils.radToDeg(rollRad);
     }
 
-    // 5) Complementary filter
-    const alpha = 0.98; // 98% gyro, 2% accel
-    const pitchNew = alpha * pitchGyro + (1 - alpha) * pitchAcc;
-    const rollNew  = alpha * rollGyro  + (1 - alpha) * rollAcc;
-    const yawNew   = yawGyro; // no correction for yaw (no magnetometer)
+    // 6) Smooth the accel angles before using them in the complementary filter
+    //    This helps kill random flicking.
+    const accelFilterFactor = 0.95; // bigger => heavier smoothing
+    // read previous smoothed angles
+    let pitchAccSmoothed = accelAngleRef.current.pitch;
+    let rollAccSmoothed  = accelAngleRef.current.roll;
+    // update them
+    pitchAccSmoothed = pitchAccSmoothed * accelFilterFactor 
+                     + pitchAccRaw * (1 - accelFilterFactor);
+    rollAccSmoothed  = rollAccSmoothed  * accelFilterFactor 
+                     + rollAccRaw  * (1 - accelFilterFactor);
 
-    // Store back
-    orientationRef.current.pitch = pitchNew;
-    orientationRef.current.roll  = rollNew;
-    orientationRef.current.yaw   = yawNew;
+    // store back
+    accelAngleRef.current.pitch = pitchAccSmoothed;
+    accelAngleRef.current.roll  = rollAccSmoothed;
 
-    // 6) Optional: keep angles in [0..360) to avoid large numbers
-    orientationRef.current.pitch %= 360;
-    orientationRef.current.roll  %= 360;
-    orientationRef.current.yaw   %= 360;
+    // 7) Decide how much we trust the accelerometer
+    //    - if rocket is at rest, might set orientation fully upright or use huge alpha
+    //    - if rocket is accelerating, might ignore accel
+    let alpha = 0.98;
+    // If rocket is accelerating strongly or we see large thrust,
+    // a separate approach might set alpha = 0.995. (You already have that logic.)
+    // But let's do a "rest" override:
+    if (atRest) {
+      // E.g. raise alpha even more. 
+      // Or skip gyro integration if you trust it’s actually at rest upright.
+      alpha = 0.995;
+    }
 
-    // 7) Apply rotation in Three.js (convert degrees -> radians)
+    // Combine angles with complementary filter
+    let pitchNew = pitchGyro;
+    let rollNew  = rollGyro;
+    let yawNew   = yawGyro;  // still no magnetometer correction
+
+    // If you want a “dynamic detection” to skip accel, you could do that here.
+    // We'll do a simpler approach: always do partial fusion:
+    pitchNew = alpha * pitchGyro + (1 - alpha) * pitchAccSmoothed;
+    rollNew  = alpha * rollGyro  + (1 - alpha) * rollAccSmoothed;
+
+    orientationRef.current.pitch = pitchNew % 360;
+    orientationRef.current.roll  = rollNew  % 360;
+    orientationRef.current.yaw   = yawNew   % 360;
+
+    // 8) Apply rotation in Three.js (convert degrees -> radians)
     if (groupRef.current) {
       groupRef.current.rotation.x = THREE.MathUtils.degToRad(orientationRef.current.pitch);
       groupRef.current.rotation.y = THREE.MathUtils.degToRad(orientationRef.current.yaw);
@@ -169,6 +219,7 @@ function initThreeScene({
     controls.update();
     renderer.render(scene, camera);
   }
+
   animate();
 
   // Handle resize
@@ -207,7 +258,7 @@ function initThreeScene({
 }
 
 /**
- * RocketModel - With Basic Complementary Filter
+ * RocketModel - With a Smoother Complementary Filter
  * 
  * Props:
  *  - gyro_x, gyro_y, gyro_z    (deg/s)
@@ -224,12 +275,15 @@ function RocketModel({
   const groupRef = useRef(null);
   const rocketRef = useRef(null);
 
-  // Latest sensor readings in refs
+  // Latest sensor readings
   const gyroRef  = useRef({ x: 0, y: 0, z: 0 });
   const accelRef = useRef({ x: 0, y: 0, z: 0 });
 
   // Store orientation in degrees
   const orientationRef = useRef({ pitch: 0, roll: 0, yaw: 0 });
+
+  // Store smoothed accel angles
+  const accelAngleRef = useRef({ pitch: 0, roll: 0 });
 
   // Last frame time for dt
   const lastFrameTimeRef = useRef(performance.now());
@@ -247,6 +301,7 @@ function RocketModel({
       lastFrameTimeRef,
       gyroRef,
       accelRef,
+      accelAngleRef,
     });
     return cleanup;
   }, []);
