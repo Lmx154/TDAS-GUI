@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import TelemetryDisplay from "../components/telemetry_panel";
