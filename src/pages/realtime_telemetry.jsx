@@ -163,10 +163,13 @@ function TestPage() {
           <div className="w-[400px] p-4 border rounded bg-white/30 backdrop-blur-md">
             <h2 className="text-xl font-bold mb-4">3D Rocket Visualization</h2>
             <RocketModel
-              gyro_x={telemetry.gyro_x}
-              gyro_y={telemetry.gyro_y}
-              gyro_z={telemetry.gyro_z}
-            />
+                gyro_x={telemetry.gyro_x}
+                gyro_y={telemetry.gyro_y}
+                gyro_z={telemetry.gyro_z}
+                accel_x={telemetry.accel_x}
+                accel_y={telemetry.accel_y}
+                accel_z={telemetry.accel_z}
+              />
           </div>
 
           <Controls 

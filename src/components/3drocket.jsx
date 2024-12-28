@@ -3,6 +3,10 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
+/**
+ * initThreeScene - sets up scene, camera, renderer, rocket group, etc.
+ * Returns a cleanup function.
+ */
 function initThreeScene({
   mountRef,
   sceneRef,
@@ -10,9 +14,10 @@ function initThreeScene({
   groupRef,
   rocketRef,
   animationFrameRef,
-  gyroRef,        // We'll read from this ref each frame
-  orientationRef, // We'll store rocket orientation in degrees here
-  lastFrameTimeRef
+  orientationRef,
+  lastFrameTimeRef,
+  gyroRef,
+  accelRef,
 }) {
   const mount = mountRef.current;
   const scene = new THREE.Scene();
@@ -53,16 +58,16 @@ function initThreeScene({
   camera.add(cameraLight);
   scene.add(camera);
 
-  // Store materials and geometries for cleanup
+  // Cleanup sets
   const materials = new Set();
   const geometries = new Set();
 
-  // Create a group and add it to the scene
+  // Group for rocket
   const group = new THREE.Group();
   groupRef.current = group;
   scene.add(group);
 
-  // Load rocket model
+  // Load rocket
   const loader = new GLTFLoader();
   loader.load(
     "/rocket_model.gltf",
@@ -72,7 +77,6 @@ function initThreeScene({
       rocket.rotation.order = "XYZ";
       rocket.position.set(0, -2.7, 0);
 
-      // Collect geometries/materials for cleanup
       rocket.traverse((node) => {
         if (node.isMesh) {
           if (node.geometry) geometries.add(node.geometry);
@@ -99,29 +103,67 @@ function initThreeScene({
   function animate() {
     animationFrameRef.current = requestAnimationFrame(animate);
 
-    // Time-based integration
+    // 1) Compute dt
     const currentTime = performance.now();
     const deltaMs = currentTime - lastFrameTimeRef.current;
     lastFrameTimeRef.current = currentTime;
-    const deltaSec = deltaMs / 1000;
+    const dt = deltaMs / 1000;
 
-    // 1) Read latest gyro rates (deg/s)
+    // 2) Read gyro (deg/s) + accel (m/s^2)
     const { x: gx, y: gy, z: gz } = gyroRef.current;
-    // 2) Integrate to get orientation in degrees
-    orientationRef.current.x += gx * deltaSec;
-    orientationRef.current.y += gy * deltaSec;
-    orientationRef.current.z += gz * deltaSec;
+    const { x: ax, y: ay, z: az } = accelRef.current;
 
-    // Optional: keep angles in [0..360)
-    orientationRef.current.x %= 360;
-    orientationRef.current.y %= 360;
-    orientationRef.current.z %= 360;
+    // 3) Convert gyro from deg/s -> deg for this dt
+    //    We'll do everything in degrees for pitch/roll/yaw, then convert to radians for Three.js
 
-    // Convert to radians for Three.js (note "MathUtils" not "Math")
+    // Current angles (from last frame)
+    let pitch = orientationRef.current.pitch;
+    let roll  = orientationRef.current.roll;
+    let yaw   = orientationRef.current.yaw;
+
+    // Integrate gyro
+    const pitchGyro = pitch + gx * dt; 
+    const rollGyro  = roll  + gy * dt; 
+    const yawGyro   = yaw   + gz * dt; // No magnetometer => can't correct yaw drift easily
+
+    // 4) Estimate pitch, roll from accel to correct drift
+    //    Convert to degrees
+    //    pitch_acc = atan2(-accX, sqrt(accY^2 + accZ^2))
+    //    roll_acc  = atan2(accY, accZ)
+    //    (Be mindful of coordinate orientation; might need to invert signs.)
+    let pitchAcc = 0;
+    let rollAcc = 0;
+    if (!(ax === 0 && ay === 0 && az === 0)) {
+      // Calculate in radians:
+      const pitchRad = Math.atan2(-ax, Math.sqrt(ay * ay + az * az));
+      const rollRad  = Math.atan2(ay, az);
+
+      // Convert to degrees
+      pitchAcc = THREE.MathUtils.radToDeg(pitchRad);
+      rollAcc  = THREE.MathUtils.radToDeg(rollRad);
+    }
+
+    // 5) Complementary filter
+    const alpha = 0.98; // 98% gyro, 2% accel
+    const pitchNew = alpha * pitchGyro + (1 - alpha) * pitchAcc;
+    const rollNew  = alpha * rollGyro  + (1 - alpha) * rollAcc;
+    const yawNew   = yawGyro; // no correction for yaw (no magnetometer)
+
+    // Store back
+    orientationRef.current.pitch = pitchNew;
+    orientationRef.current.roll  = rollNew;
+    orientationRef.current.yaw   = yawNew;
+
+    // 6) Optional: keep angles in [0..360) to avoid large numbers
+    orientationRef.current.pitch %= 360;
+    orientationRef.current.roll  %= 360;
+    orientationRef.current.yaw   %= 360;
+
+    // 7) Apply rotation in Three.js (convert degrees -> radians)
     if (groupRef.current) {
-      groupRef.current.rotation.x = THREE.MathUtils.degToRad(orientationRef.current.x);
-      groupRef.current.rotation.y = THREE.MathUtils.degToRad(orientationRef.current.y);
-      groupRef.current.rotation.z = THREE.MathUtils.degToRad(orientationRef.current.z);
+      groupRef.current.rotation.x = THREE.MathUtils.degToRad(orientationRef.current.pitch);
+      groupRef.current.rotation.y = THREE.MathUtils.degToRad(orientationRef.current.yaw);
+      groupRef.current.rotation.z = THREE.MathUtils.degToRad(orientationRef.current.roll);
     }
 
     controls.update();
@@ -137,7 +179,7 @@ function initThreeScene({
   };
   window.addEventListener("resize", handleResize);
 
-  // Return a cleanup function
+  // Return cleanup
   return () => {
     window.removeEventListener("resize", handleResize);
     cancelAnimationFrame(animationFrameRef.current);
@@ -164,26 +206,35 @@ function initThreeScene({
   };
 }
 
-function RocketModel({ gyro_x, gyro_y, gyro_z }) {
-  // Refs
+/**
+ * RocketModel - With Basic Complementary Filter
+ * 
+ * Props:
+ *  - gyro_x, gyro_y, gyro_z    (deg/s)
+ *  - accel_x, accel_y, accel_z (m/s^2)
+ */
+function RocketModel({
+  gyro_x = 0, gyro_y = 0, gyro_z = 0,
+  accel_x = 0, accel_y = 0, accel_z = 0,
+}) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
   const animationFrameRef = useRef(null);
-
   const groupRef = useRef(null);
   const rocketRef = useRef(null);
 
-  // Store the latest gyro readings
-  const gyroRef = useRef({ x: 0, y: 0, z: 0 });
+  // Latest sensor readings in refs
+  const gyroRef  = useRef({ x: 0, y: 0, z: 0 });
+  const accelRef = useRef({ x: 0, y: 0, z: 0 });
 
-  // Orientation in degrees
-  const orientationRef = useRef({ x: 0, y: 0, z: 0 });
+  // Store orientation in degrees
+  const orientationRef = useRef({ pitch: 0, roll: 0, yaw: 0 });
 
-  // Keep track of last frame time to compute delta t
+  // Last frame time for dt
   const lastFrameTimeRef = useRef(performance.now());
 
-  // 1) Scene Initialization
+  // 1) Init scene once
   useEffect(() => {
     const cleanup = initThreeScene({
       mountRef,
@@ -192,21 +243,27 @@ function RocketModel({ gyro_x, gyro_y, gyro_z }) {
       groupRef,
       rocketRef,
       animationFrameRef,
-      gyroRef,
       orientationRef,
       lastFrameTimeRef,
+      gyroRef,
+      accelRef,
     });
     return cleanup;
   }, []);
 
-  // 2) Listen for changes in gyro props and update gyroRef
+  // 2) On prop changes, update sensor refs
   useEffect(() => {
-    gyroRef.current.x = gyro_x;
-    gyroRef.current.y = gyro_y;
-    gyroRef.current.z = gyro_z;
-  }, [gyro_x, gyro_y, gyro_z]);
+    gyroRef.current.x  = gyro_x;
+    gyroRef.current.y  = gyro_y;
+    gyroRef.current.z  = gyro_z;
+    accelRef.current.x = accel_x;
+    accelRef.current.y = accel_y;
+    accelRef.current.z = accel_z;
+  }, [gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z]);
 
-  return <div ref={mountRef} style={{ width: "100%", height: "400px" }} />;
+  return (
+    <div ref={mountRef} style={{ width: "100%", height: "400px" }} />
+  );
 }
 
 export default RocketModel;
