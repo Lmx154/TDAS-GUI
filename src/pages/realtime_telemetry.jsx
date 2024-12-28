@@ -5,6 +5,7 @@ import RocketModel from "../components/3drocket";
 import LineChart from "../components/charts";
 import Map from "../components/map";
 import Controls from "../components/controls";
+import ThreeDChart from "../components/3dcharts";
 
 function TestPage() {
   const [portName, setPortName] = useState("");
@@ -205,6 +206,11 @@ function TestPage() {
           <div className="w-[375px]">
             <TelemetryDisplay telemetry={telemetry} />
           </div>
+        </div>
+
+        <div className="w-full p-4 border rounded bg-white/30 backdrop-blur-md mt-4">
+          <h2 className="text-xl font-bold mb-4">3D Trajectory Chart</h2>
+          <ThreeDChart telemetry={telemetry} telemetryData={telemetryData} />
         </div>
       </div>
     </div>
