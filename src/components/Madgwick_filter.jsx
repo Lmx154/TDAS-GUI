@@ -1,5 +1,3 @@
-// Madgwick_filter.jsx
-
 import * as THREE from "three";
 
 // Madgwick filter in JavaScript
@@ -34,9 +32,9 @@ export default class MadgwickAHRS {
 
     // Local copies of quaternion
     let q0 = this.q0,
-      q1 = this.q1,
-      q2 = this.q2,
-      q3 = this.q3;
+        q1 = this.q1,
+        q2 = this.q2,
+        q3 = this.q3;
 
     // Auxiliary variables to avoid repeated arithmetic
     const _2q0 = 2.0 * q0;
@@ -63,7 +61,7 @@ export default class MadgwickAHRS {
       _4q1 +
       _8q1 * q1q1 +
       _8q1 * q2q2 +
-      _4q1 * az;
+      4.0 * q1 * az;
     const s2 =
       4.0 * q0q0 * q2 +
       _2q0 * ax +
@@ -121,7 +119,6 @@ export default class MadgwickAHRS {
     const sinp = 2 * (q0 * q2 - q3 * q1);
     let pitch;
     if (Math.abs(sinp) >= 1) {
-      // clamp
       pitch = Math.sign(sinp) * (Math.PI / 2);
     } else {
       pitch = Math.asin(sinp);
@@ -139,4 +136,3 @@ export default class MadgwickAHRS {
     };
   }
 }
-
