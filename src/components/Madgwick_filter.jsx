@@ -1,4 +1,4 @@
-// Madgwick_filter.js
+// Madgwick_filter.jsx
 
 import * as THREE from "three";
 

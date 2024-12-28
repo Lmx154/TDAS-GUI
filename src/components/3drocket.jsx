@@ -13,7 +13,7 @@ function initThreeScene({
   groupRef,
   rocketRef,
   animationFrameRef,
-  madgwickRef,       // We'll store our Madgwick instance here
+  madgwickRef,
   lastFrameTimeRef,
   gyroRef,
   accelRef
@@ -90,7 +90,7 @@ function initThreeScene({
   const loader = new GLTFLoader();
   loader.load(
     "/rocket_model.gltf",
-    gltf => {
+    (gltf) => {
       const rocket = gltf.scene;
       rocket.scale.set(0.5, 0.5, 0.5);
 
@@ -116,10 +116,16 @@ function initThreeScene({
       rocketRef.current = rocket;
     },
     undefined,
-    error => {
+    (error) => {
       console.error(error);
     }
   );
+
+  // Parameters for adaptive accel weighting
+  const NOMINAL_GRAVITY = 9.81;
+  const ACCEL_THRESHOLD = 2.5; // how far from 9.81 before we reduce accel correction
+  const NORMAL_BETA = 0.1;
+  const REDUCED_BETA = 0.01;   // smaller -> trust accel less
 
   // Animation loop
   function animate() {
@@ -141,20 +147,31 @@ function initThreeScene({
     const gyRad = THREE.MathUtils.degToRad(gyDeg);
     const gzRad = THREE.MathUtils.degToRad(gzDeg);
 
-    // Update the Madgwick filter
-    // If you have a constant sampling rate, set sampleFreq to 1/dt or similar.
-    // We'll call .update(...) each frame.
-    const sampleFreq = dt > 0 ? 1 / dt : 100; // fallback
+    // Update the Madgwick sample frequency
+    const sampleFreq = dt > 0 ? 1 / dt : 100; // fallback if dt=0
     madgwickRef.current.sampleFreq = sampleFreq;
 
-    // madgwick.update(gxRad, gyRad, gzRad, ax, ay, az, mx, my, mz) if you have mag
+    // ---- Adaptive weighting logic ----
+    // If net accel is far from 1g, we assume rocket is under heavy thrust or other linear acceleration
+    const accelMagnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+    const diffFromG = Math.abs(accelMagnitude - NOMINAL_GRAVITY);
+
+    if (diffFromG > ACCEL_THRESHOLD) {
+      // Rocket is accelerating strongly -> reduce beta so we trust accel less
+      madgwickRef.current.beta = REDUCED_BETA;
+    } else {
+      // Normal flight or at rest -> normal beta
+      madgwickRef.current.beta = NORMAL_BETA;
+    }
+
+    // Update Madgwick filter (no magnetometer)
     madgwickRef.current.update(gxRad, gyRad, gzRad, ax, ay, az);
 
     // Get Euler angles from the filter in degrees
     const { roll, pitch, yaw } = madgwickRef.current.getEulerAnglesDeg();
 
     // Convert to radians for Three.js
-    // Decide how you map roll/pitch/yaw to x,y,z rotation depending on your rocket’s axis
+    // Mapping: pitch->X, yaw->Y, roll->Z
     group.rotation.x = THREE.MathUtils.degToRad(pitch);
     group.rotation.y = THREE.MathUtils.degToRad(yaw);
     group.rotation.z = THREE.MathUtils.degToRad(roll);
@@ -178,14 +195,14 @@ function initThreeScene({
     window.removeEventListener("resize", handleResize);
     cancelAnimationFrame(animationFrameRef.current);
 
-    materials.forEach(m => m.dispose());
-    geometries.forEach(g => g.dispose());
+    materials.forEach((m) => m.dispose());
+    geometries.forEach((g) => g.dispose());
 
-    scene.traverse(object => {
+    scene.traverse((object) => {
       if (object.geometry) object.geometry.dispose();
       if (object.material) {
         if (Array.isArray(object.material)) {
-          object.material.forEach(mat => mat.dispose());
+          object.material.forEach((mat) => mat.dispose());
         } else {
           object.material.dispose();
         }
@@ -201,7 +218,7 @@ function initThreeScene({
 }
 
 /**
- * RocketModel - Using MadgwickAHRS for orientation
+ * RocketModel - Using MadgwickAHRS for orientation with adaptive accel weighting
  * 
  * Props:
  *  gyro_x, gyro_y, gyro_z: gyroscope in deg/s
@@ -230,8 +247,8 @@ function RocketModel({
 
   useEffect(() => {
     // 1) Initialize the Madgwick filter once
-    madgwickRef.current = new MadgwickAHRS(100, 0.1); 
-    // sampleFreq=100 Hz, beta=0.1 -> tweak as needed
+    // sampleFreq=100 Hz, beta=0.1 -> will be updated if acceleration is large
+    madgwickRef.current = new MadgwickAHRS(100, 0.1);
 
     // 2) Initialize Three.js scene
     const cleanup = initThreeScene({
