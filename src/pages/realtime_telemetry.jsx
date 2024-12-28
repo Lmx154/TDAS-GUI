@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import TelemetryDisplay from "../components/telemetry_panel";
@@ -41,7 +39,7 @@ function TestPage() {
     snr: 0,
   });
   const [telemetryData, setTelemetryData] = useState([]);
-  const [selectedGraph, setSelectedGraph] = useState("BME Temperature");
+  const [selectedGraph, setSelectedGraph] = useState("Altitude"); // Ensure this is set to "Altitude"
 
   useEffect(() => {
     const unlisten = listen("telemetry-update", (event) => {
@@ -56,6 +54,7 @@ function TestPage() {
             imu_temp: Number(event.payload.imu_temp),
             bme_pressure: Number(event.payload.bme_pressure),
             gps_speed: Number(event.payload.gps_speed),
+            bme_altitude: Number(event.payload.bme_altitude),
           },
         ];
 
@@ -75,6 +74,19 @@ function TestPage() {
 
   const renderGraph = () => {
     switch (selectedGraph) {
+      case "Altitude":
+        return (
+          <LineChart
+            data={telemetryData}
+            xAccessor={(d) => new Date(d.timestamp)}
+            yAccessor={(d) => d.bme_altitude}
+            color="orange"
+            title="Altitude"
+            width={600}
+            height={400}
+            margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
+          />
+        );
       case "BME Temperature":
         return (
           <LineChart
@@ -83,8 +95,8 @@ function TestPage() {
             yAccessor={(d) => d.bme_temp}
             color="red"
             title="BME Temperature"
-            width={800}
-            height={300}
+            width={600} 
+            height={400}
             margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
           />
         );
@@ -96,8 +108,8 @@ function TestPage() {
             yAccessor={(d) => d.imu_temp}
             color="blue"
             title="IMU Temperature"
-            width={800}
-            height={300}
+            width={600}  
+            height={400}
             margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
           />
         );
@@ -109,8 +121,8 @@ function TestPage() {
             yAccessor={(d) => d.bme_pressure}
             color="green"
             title="BME Pressure"
-            width={800}
-            height={300}
+            width={600}  
+            height={400}
             margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
           />
         );
@@ -122,8 +134,8 @@ function TestPage() {
             yAccessor={(d) => d.gps_speed}
             color="purple"
             title="GPS Speed"
-            width={800}
-            height={300}
+            width={600} 
+            height={400}
             margin={{ top: 50, right: 30, bottom: 50, left: 50 }}
           />
         );
@@ -150,10 +162,11 @@ function TestPage() {
               onChange={(e) => setSelectedGraph(e.target.value)}
               className="border rounded p-2 text-black mb-4 w-full"
             >
+              <option value="Altitude">Altitude</option>  {/* Moved to the first position */}
               <option value="BME Temperature">BME Temperature</option>
               <option value="IMU Temperature">IMU Temperature</option>
               <option value="BME Pressure">BME Pressure</option>
-              <option value="GPS Speed">GPS Speed</option>
+              <option value="GPS Speed">GPS Speed</option> 
             </select>
             {renderGraph()}
           </div>

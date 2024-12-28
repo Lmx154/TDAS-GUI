@@ -20,8 +20,8 @@ function LineChart({
   xAccessor,
   yAccessor,
   color = "steelblue",
-  width = 800,
-  height = 300,
+  width = 600,  // Changed from 800 to 600
+  height = 400,
   margin = { top: 20, right: 20, bottom: 30, left: 50 },
   title = "",
 }) {
@@ -60,7 +60,9 @@ function LineChart({
       .range([innerHeight, 0]);
 
     // Update the axes
-    const xAxis = d3.axisBottom(xScale);
+    const xAxis = d3.axisBottom(xScale)
+      .ticks(5)  // Limit the number of ticks
+      .tickFormat(d3.timeFormat("%H:%M:%S")); // Format time as HH:MM:SS
     const yAxis = d3.axisLeft(yScale);
 
     xAxisGroup
