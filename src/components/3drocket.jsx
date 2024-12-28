@@ -22,162 +22,156 @@ function initThreeScene({
   const scene = new THREE.Scene();
   sceneRef.current = scene;
 
-  // Camera
-  const camera = new THREE.PerspectiveCamera(
-    75,
-    mount.clientWidth / mount.clientHeight,
-    0.1,
-    1000
-  );
-  const dist=8; 
-  const angle=Math.PI/4;
+  // Setup camera
+  const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000);
+  const dist = 8;
+  const angle= Math.PI/4;
   camera.position.set(dist*Math.cos(angle), -dist*Math.cos(angle), dist*Math.sin(angle));
   camera.lookAt(0,0,0);
 
-  const rotationMatrix=new THREE.Matrix4();
+  // Reorient camera to Z-up
+  const rotationMatrix= new THREE.Matrix4();
   rotationMatrix.makeRotationX(Math.PI/2);
   camera.up.applyMatrix4(rotationMatrix);
 
   // Renderer
-  const renderer=new THREE.WebGLRenderer({antialias:true, alpha:true});
+  const renderer= new THREE.WebGLRenderer({antialias:true, alpha:true});
   rendererRef.current= renderer;
   renderer.setSize(mount.clientWidth, mount.clientHeight);
   renderer.setClearColor(0x000000,0);
-  renderer.physicallyCorrectLights=true;
+  renderer.physicallyCorrectLights= true;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.5;
   mount.appendChild(renderer.domElement);
 
   // OrbitControls
   const controls= new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping=true;
-  controls.dampingFactor=0.05;
+  controls.enableDamping= true;
+  controls.dampingFactor= 0.05;
   controls.minDistance=5;
   controls.maxDistance=15;
   controls.target.set(0,0,0);
   controls.update();
 
-  // Light
-  const cameraLight= new THREE.SpotLight(0xffffff,200);
+  // Light on camera
+  const cameraLight= new THREE.SpotLight(0xffffff, 200);
   cameraLight.position.set(0,0,1);
-  cameraLight.angle=Math.PI/2;
+  cameraLight.angle= Math.PI/2;
   cameraLight.penumbra=1;
   cameraLight.decay=0;
   camera.add(cameraLight);
   scene.add(camera);
 
   // For cleanup
-  const materials=new Set();
-  const geometries=new Set();
+  const materials= new Set();
+  const geometries= new Set();
 
-  // Rocket group
-  const group=new THREE.Group();
-  groupRef.current=group;
+  // Create rocket group
+  const group= new THREE.Group();
+  groupRef.current= group;
   scene.add(group);
 
-  // AxesHelper
-  const axesHelper=new AxesHelper(6);
+  // Axes helper
+  const axesHelper= new AxesHelper(6);
   group.add(axesHelper);
 
-  // Load rocket glTF
-  const loader=new GLTFLoader();
+  // Load rocket GLTF
+  const loader= new GLTFLoader();
   loader.load(
     "/rocket_model.gltf",
-    (gltf)=>{
-      const rocket=gltf.scene;
+    gltf =>{
+      const rocket= gltf.scene;
       rocket.scale.set(0.5,0.5,0.5);
-      // Nose up +Z
       rocket.rotation.x= Math.PI/2;
-      rocket.rotation.order="XYZ";
+      rocket.rotation.order= "XYZ";
       rocket.position.set(0,0,0);
 
-      rocket.traverse((node)=>{
+      rocket.traverse(node=>{
         if(node.isMesh){
           if(node.geometry) geometries.add(node.geometry);
-          const material=new THREE.MeshStandardMaterial({
+          const mat= new THREE.MeshStandardMaterial({
             color:0xffffff, metalness:1.0, roughness:0.1
           });
-          materials.add(material);
-          node.material=material;
+          materials.add(mat);
+          node.material= mat;
         }
       });
-
       group.add(rocket);
-      rocketRef.current=rocket;
+      rocketRef.current= rocket;
     },
     undefined,
     err=> console.error(err)
   );
 
+  // Some thresholds akin to Python code
   const NOMINAL_GRAVITY=9.81;
-  const ACCEL_ZERO_THRESHOLD=2.5;
-  const GYRO_REST_THRESHOLD=THREE.MathUtils.degToRad(1); // e.g. <1 deg/s => "small"
-  const SMOOTH_FACTOR=0.2;
+  const ACCEL_THRESHOLD=2.5; // +/- from 9.81
+  const GYRO_REST_THRESHOLD= THREE.MathUtils.degToRad(1.0); // <1 deg/s => "rest"
+  const SMOOTH_FACTOR=0.2; // orientation smoothing
 
+  // Animation Loop
   function animate(){
-    animationFrameRef.current= requestAnimationFrame(animate);
+    animationFrameRef.current = requestAnimationFrame(animate);
 
-    const currentTime=performance.now();
-    const deltaMs=currentTime- lastFrameTimeRef.current;
-    lastFrameTimeRef.current=currentTime;
+    const currentTime= performance.now();
+    const deltaMs= currentTime- lastFrameTimeRef.current;
+    lastFrameTimeRef.current= currentTime;
     const dt= deltaMs/1000;
 
-    // Sensor data
-    const {x: gxDeg,y: gyDeg,z: gzDeg}= gyroRef.current;
-    let {x: ax, y:ay, z:az}= accelRef.current;
+    // Retrieve sensor data
+    const {x: gxDeg, y: gyDeg, z: gzDeg} = gyroRef.current; 
+    let {x: ax, y: ay, z: az} = accelRef.current;
 
     // Convert gyro to rad/s
-    const gxRad=THREE.MathUtils.degToRad(gxDeg);
-    const gyRad=THREE.MathUtils.degToRad(gyDeg);
-    const gzRad=THREE.MathUtils.degToRad(gzDeg);
+    const gxRad= THREE.MathUtils.degToRad(gxDeg);
+    const gyRad= THREE.MathUtils.degToRad(gyDeg);
+    const gzRad= THREE.MathUtils.degToRad(gzDeg);
 
-    if(dt>0){
-      kalmanRef.current.sampleFreq=1/dt;
+    if(dt> 0) {
+      kalmanRef.current.sampleFreq= 1/dt;
     }
 
-    // 1) Possibly zero accel if net acceleration large
-    const accelMag=Math.sqrt(ax*ax+ ay*ay+ az*az);
-    if(Math.abs(accelMag- NOMINAL_GRAVITY)> ACCEL_ZERO_THRESHOLD){
-      ax=0; ay=0; az=0; 
+    // Zero out accel if net accel far from 1g (like Python)
+    const accelMag= Math.sqrt(ax*ax + ay*ay + az*az);
+    const diffFromG= Math.abs(accelMag- NOMINAL_GRAVITY);
+    if(diffFromG> ACCEL_THRESHOLD){
+      ax=0; ay=0; az=0;
     }
 
-    // 2) Update Kalman
-    kalmanRef.current.update(gxRad,gyRad,gzRad, ax,ay,az);
+    // Kalman update
+    kalmanRef.current.update(gxRad, gyRad, gzRad, ax, ay, az);
 
-    // 3) If rocket is truly at rest => forcibly nudge pitch/roll to 0
-    // "At rest" => net accel near 1g & gyro < 1 deg/s
-    const gyroMag = Math.sqrt(gxRad*gxRad + gyRad*gyRad + gzRad*gzRad);
-    const atRest= ( Math.abs(accelMag- NOMINAL_GRAVITY)< 0.8 ) && (gyroMag< GYRO_REST_THRESHOLD );
+    // Check if rocket is at rest: near 1g and small gyro
+    const gyroMag= Math.sqrt(gxRad*gxRad + gyRad*gyRad + gzRad*gzRad);
+    const atRest= (diffFromG < 0.8) && (gyroMag< GYRO_REST_THRESHOLD);
 
-    // 4) Get raw orientation from Kalman
-    let {roll, pitch, yaw}= kalmanRef.current.getEulerAnglesDeg();
+    // Get raw Kalman angles in deg
+    let {roll, pitch, yaw} = kalmanRef.current.getEulerAnglesDeg();
 
+    // If at rest, gently push pitch/roll ~0
     if(atRest){
-      // Gently push pitch/roll toward 0
-      pitch= pitch*0.9; // or pitch= pitch*(1-0.1)
-      roll = roll*0.9;
+      roll=  roll* 0.9;
+      pitch= pitch*0.9;
     }
 
-    // 5) Smooth final orientation to reduce stutter
-    let {roll:oldRoll, pitch:oldPitch, yaw:oldYaw}= smoothOrientationRef.current;
+    // Smoothing final orientation
+    let {roll: oldR, pitch: oldP, yaw: oldY} = smoothOrientationRef.current;
 
-    const newRoll = oldRoll + SMOOTH_FACTOR*(roll- oldRoll);
-    const newPitch= oldPitch+ SMOOTH_FACTOR*(pitch- oldPitch);
-    const newYaw  = oldYaw + SMOOTH_FACTOR*(yaw- oldYaw);
+    const newRoll  = oldR + SMOOTH_FACTOR*(roll- oldR);
+    const newPitch = oldP + SMOOTH_FACTOR*(pitch- oldP);
+    const newYaw   = oldY + SMOOTH_FACTOR*(yaw- oldY);
 
-    smoothOrientationRef.current.roll = newRoll;
-    smoothOrientationRef.current.pitch= newPitch;
-    smoothOrientationRef.current.yaw  = newYaw;
+    smoothOrientationRef.current.roll  = newRoll;
+    smoothOrientationRef.current.pitch = newPitch;
+    smoothOrientationRef.current.yaw   = newYaw;
 
-    // 6) Apply to 3D
+    // Apply to 3D rocket
     group.rotation.x= THREE.MathUtils.degToRad(newPitch);
     group.rotation.y= THREE.MathUtils.degToRad(newYaw);
     group.rotation.z= THREE.MathUtils.degToRad(newRoll);
 
     renderer.render(scene, camera);
-    // OrbitControls
   }
-
   animate();
 
   function handleResize(){
@@ -195,13 +189,12 @@ function initThreeScene({
     scene.traverse(obj=>{
       if(obj.geometry) obj.geometry.dispose();
       if(obj.material){
-        if(Array.isArray(obj.material)){
-          obj.material.forEach(mt=>mt.dispose());
-        } else obj.material.dispose();
+        if(Array.isArray(obj.material)) obj.material.forEach(mt=>mt.dispose());
+        else obj.material.dispose();
       }
     });
     renderer.dispose();
-    if(renderer.domElement && mount.contains(renderer.domElement)){
+    if(renderer.domElement&& mount.contains(renderer.domElement)){
       mount.removeChild(renderer.domElement);
     }
   };
@@ -227,13 +220,13 @@ function RocketModel({
   const lastFrameTimeRef= useRef(performance.now());
 
   useEffect(()=>{
-    // Construct the Kalman
+    // Construct the KalmanAHRS
     kalmanRef.current= new KalmanAHRS(100);
 
     const cleanup= initThreeScene({
-      mountRef, sceneRef, rendererRef, groupRef, rocketRef,
-      animationFrameRef, kalmanRef, lastFrameTimeRef,
-      gyroRef, accelRef, smoothOrientationRef
+      mountRef, sceneRef, rendererRef, groupRef,
+      rocketRef, animationFrameRef, kalmanRef,
+      lastFrameTimeRef, gyroRef, accelRef, smoothOrientationRef
     });
     return cleanup;
   },[]);
@@ -243,6 +236,7 @@ function RocketModel({
     gyroRef.current.x= gyro_x;
     gyroRef.current.y= gyro_y;
     gyroRef.current.z= gyro_z;
+
     accelRef.current.x= accel_x;
     accelRef.current.y= accel_y;
     accelRef.current.z= accel_z;
